@@ -128,7 +128,7 @@ char* ThreadSynch::CreateUniqueString()
     return uniqueString;
 }
 
-void ThreadSynch::KillLastThread()
+bool ThreadSynch::KillLastThread()
 {
     pthread_mutex_lock( &_mutex );
 
@@ -155,6 +155,8 @@ void ThreadSynch::KillLastThread()
     }
 
     pthread_mutex_unlock( &_mutex );
+
+    return true;
 }
 
 void ThreadSynch::KillAllThreads()

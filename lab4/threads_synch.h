@@ -30,7 +30,7 @@ class ThreadSynch
         bool InitMutex();
         bool Execute();
         bool AddThread();
-        void KillLastThread();
+        bool KillLastThread();
         void KillAllThreads();
 };
 
