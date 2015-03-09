@@ -33,6 +33,8 @@
 			<Add option="-fexceptions" />
 		</Compiler>
 		<Unit filename="main.cpp" />
+		<Unit filename="threads_synch.cpp" />
+		<Unit filename="threads_synch.h" />
 		<Extensions>
 			<code_completion />
 			<debugger />
