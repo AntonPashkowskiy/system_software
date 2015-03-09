@@ -3,12 +3,13 @@
 	"threads_synch.h"
 	<iostream>
 
-1425859813 /home/wolendrang/system_software/lab4/threads_synch.h
+1425915513 /home/wolendrang/system_software/lab4/threads_synch.h
 	<pthread.h>
-	<vector>
+	<list>
 
-1425860307 source:/home/wolendrang/system_software/lab4/threads_synch.cpp
+1425916916 source:/home/wolendrang/system_software/lab4/threads_synch.cpp
 	"threads_synch.h"
 	<iostream>
 	<string.h>
+	<stdio.h>
 
