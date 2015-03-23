@@ -1,0 +1,37 @@
+<ActionPlugins>
+	<ActionPlugin>
+		<Operation>product</Operation>
+		<Class>Product</Class>
+		<Assembly>ArythmeticPlugin.dll</Assembly>
+	</ActionPlugin>
+	<ActionPlugin>
+		<Operation>sum</Operation>
+		<Class>Sum</Class>
+		<Assembly>ArythmeticPlugin.dll</Assembly>
+	</ActionPlugin>
+	<ActionPlugin>
+		<Operation>maximum</Operation>
+		<Class>Maximum</Class>
+		<Assembly>StatisticPlugin.dll</Assembly>
+	</ActionPlugin>
+	<ActionPlugin>
+		<Operation>mean</Operation>
+		<Class>Mean</Class>
+		<Assembly>StatisticPlugin.dll</Assembly>
+	</ActionPlugin>
+	<ActionPlugin>
+		<Operation>median</Operation>
+		<Class>Median</Class>
+		<Assembly>StatisticPlugin.dll</Assembly>
+	</ActionPlugin>
+	<ActionPlugin>
+		<Operation>minimum</Operation>
+		<Class>Minimum</Class>
+		<Assembly>StatisticPlugin.dll</Assembly>
+	</ActionPlugin>
+	<ActionPlugin>
+		<Operation>variance</Operation>
+		<Class>Variance</Class>
+		<Assembly>StatisticPlugin.dll</Assembly>
+	</ActionPlugin>
+</ActionPlugins>
