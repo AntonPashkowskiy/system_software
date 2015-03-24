@@ -2,6 +2,8 @@
 #include <iostream>
 #include <string.h>
 
+// checking users commands
+
 using namespace std;
 
 void argument_handler::ShowHelp()
@@ -213,7 +215,7 @@ archive_options* argument_handler::ProcessArgument( int argc, char** argv )
 				}
 
 			case UNDEFINED:
-			 
+
 				cerr << "Error. Undefined flag: " << argv[ 1 ] << ". Apply --help." << endl;
 				return nullptr;
 		}
