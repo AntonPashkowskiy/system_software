@@ -1,25 +1,10 @@
 #include "options/argument_handler.h"
-#include "exceptions/archive_exceptions.h"
-
+#include "options/switcher_task.h" 
 
 int main( int argc, char** argv )
 {
-	try
-	{
-		
-		archive_options* options = argument_handler::ProcessArgument( argc, argv );
-
-		if( options == nullptr )
-		{
-			return -1;
-		}
-
-		argument_handler::Test( options );
-	}
-	catch( exception ex )
-	{
-		ex.ShowMessage();
-	}
-
+	archive_options* options = argument_handler::ProcessArgument( argc, argv );
+	if ( options == nullptr ) return -1;
+	switcher_task::RunTask( options );
 	return 0;
 }
