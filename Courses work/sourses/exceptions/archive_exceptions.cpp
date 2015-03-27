@@ -1,19 +1,19 @@
-#include "archive_exceptions.h"
+#include "archive_archive_exceptions.h"
 #include <iostream>
 
-exception::exception( char* message )
+archive_exception::archive_exception( char* message )
 {
 	this -> message = message;
 	this -> sourse = NULL;
 }
 
-exception::exception( char* sourse, char* message )
+archive_exception::archive_exception( char* sourse, char* message )
 {
 	this -> message = message;
 	this -> sourse = sourse;
 }
 
-void exception::ShowMessage()
+void archive_exception::ShowMessage()
 {
 	if( message != NULL )
 	{
