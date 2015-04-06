@@ -3,6 +3,9 @@
 #include <new>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <fcntl.h>
+#include <string.h>
+
 
 using namespace std;
 
@@ -19,19 +22,19 @@ void switcher_task::RunTask( archive_options* options )
 			{
 				if( options -> comment != nullptr )
 				{
-					char* path_to_file = CreateFileWithComment( char* comment );
+					char* path_to_file = CreateFileWithComment( options -> comment );
 					(options -> paths).push_back( path_to_file );
 				}
 
-				// функция по запуску архивации (обработка исключений)
+				cout << "Функция по запуску архивации (обработка исключений)." << endl;
 				cout << "Archiving completed successfully" << endl;
-				return;
 			}
 			else
 			{
 				cerr << "Archiving is suspended." << endl;
-				return;
 			}
+
+			break;
 
 		case EXTRACTING:
 
@@ -39,9 +42,9 @@ void switcher_task::RunTask( archive_options* options )
 			{
 				if( options -> target_path != nullptr )
 				{
-					if( !CheckTargetPath( options -> target_path )
+					if( !CheckTargetPath( options -> target_path ) )
 					{
-						cout << "Target path is not found." << endl;
+						cout << "Target path is invalid." << endl;
 						cout << "Extracting archive in current directory? [Y/N]: ";
 						
 						char choise;
@@ -49,6 +52,7 @@ void switcher_task::RunTask( archive_options* options )
 
 						if( choise == 'Y' )
 						{
+							// target_path это константная строка, её нельзя удалить динамически
 							options -> target_path = nullptr;
 						}
 						else
@@ -58,36 +62,37 @@ void switcher_task::RunTask( archive_options* options )
 					}
 				}
 
-				// запуск функции по распаковке архива
+				cout << "запуск функции по распаковке архива" << endl;
 			}
 			else
 			{
 				cerr << "Archive is not found." << endl;
-				return;
 			}
+
+			break;
 
 		case REMOVING:
 
-			// запуск удаления файлов (кидает исключение если нет файлов с таким именем)
-			return;
+			cout << "запуск удаления файлов (кидает исключение если нет файлов с таким именем)" << endl;
+			break;
 
 		case VIEW_TITLE:
 
 			// vector<title_node> title = null;
-			// запуск функции которая возвращает вектор со структурами title_node;
+			cout << "запуск функции которая возвращает вектор со структурами title_node" << endl;
 			// PrintTitle( title );
-			return;
+			break;
 
 		case CHECK:
 
-			// запуск функции проверки целостности, которая считывает 
+			cout << " запуск функции проверки целостности " << endl;//, которая считывает 
 			// записанный после архивации размер запакованного архива и
-			// и сравнивает его с размером на данный момент
+ 			// и сравнивает его с размером на данный момент"
 			break;
 
 		default:
 			// никогда не произойдёт потому что комманд
-			// HELP, COMMENT, UNDEFINED нет
+			// HELP, COMMENT, UNDEFINED на данном этапе нет
 			break;
 	}
 }
@@ -101,8 +106,10 @@ bool switcher_task::CheckPermissions( archive_options* options )
 
 	for( int i = 0; i < paths_count; i++ )
 	{
+		// access проверяет файлы на существование и права чтения
 		if( access( paths[ i ], F_OK ) == 0 && access( paths[ i ], R_OK ) == 0 )
 		{
+			// функция stat собирает статистику о файле указанном в пути
 			if( stat( paths[ i ], statistics ) == 0 )
 			{
 				if( S_ISDIR( statistics -> st_mode ) )
@@ -112,16 +119,6 @@ bool switcher_task::CheckPermissions( archive_options* options )
 				else if( S_ISREG( statistics -> st_mode ) )
 				{
 					result = true;
-				}
-				else if( S_ISBLK( statistics -> st_mode ) )
-				{
-					cout << "Block device can not be archived: " << paths[ i ] << endl;
-					result = false;
-				}
-				else if( S_ISCHR( statistics -> st_mode ) )
-				{
-					cout << "Character device can not be archived: " << paths[ i ] << endl;
-					result = false;
 				}
 			}
 			else
@@ -137,6 +134,7 @@ bool switcher_task::CheckPermissions( archive_options* options )
 		}
 	}
 
+	delete statistics;
 	return result;
 }
 
@@ -145,17 +143,42 @@ void switcher_task::PrintTitle( vector<title_node> title )
 
 }
 
+// создание файла с комментарием
 char* switcher_task::CreateFileWithComment( char* comment )
 {
+	char* path = "CommentTempFile.msrc";
+	int file_descriptor = open( path, O_CREAT | O_WRONLY | O_TRUNC );
 
+	if( file_descriptor != -1 )
+	{
+		write( file_descriptor, comment, strlen( comment ) );
+	}
+	
+	return path;
 }
 
+// проверка существования архива
 bool switcher_task::CheckArchiveExisting( archive_options* options )
 {
-	if( access( options -> target_archive_name, F_OK ) == 0 )
+	return access( options -> target_archive_name, F_OK ) == 0;
+}
+
+// проверка существования пути распаковки
+bool switcher_task::CheckTargetPath( char* path )
+{
+	struct stat* statistics = new struct stat;
+
+	if( access( path, F_OK ) == 0 )
 	{
-		return true;
+		if( stat( path, statistics ) == 0 )
+		{
+			if( S_ISDIR( statistics -> st_mode ) )
+			{
+				return true;
+			}
+		}
 	}
 
+	delete statistics;
 	return false;
 }

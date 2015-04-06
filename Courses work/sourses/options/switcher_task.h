@@ -8,6 +8,8 @@
 #include "archive_options.h"
 #include "title_node.h"
 
+using namespace std;
+
 /*
 	Класс необходим как прослойка для конечной обработки опций
 	таких как проверка прав доступа и существования путей, 
