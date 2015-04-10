@@ -1,6 +1,7 @@
 #include "switcher_task.h"
+#include "../archivation/archivator.h"
+#include "../archivation/masher_archivator.h"
 #include <iostream>
-#include <new>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -12,6 +13,8 @@ using namespace std;
 void switcher_task::RunTask( archive_options* options )
 {
 	if( options == nullptr ) return;
+
+	archivator* _archivator = new masher_archivator();
 
 	switch( options -> requested_operation )
 	{
@@ -26,7 +29,15 @@ void switcher_task::RunTask( archive_options* options )
 					(options -> paths).push_back( path_to_file );
 				}
 
-				cout << "Функция по запуску архивации (обработка исключений)." << endl;
+				try
+				{
+					_archivator.RunArchivation( options );
+				}
+				catch( archive_exception e )
+				{
+					e.ShowMessage();
+				}
+
 				cout << "Archiving completed successfully" << endl;
 			}
 			else
@@ -62,7 +73,14 @@ void switcher_task::RunTask( archive_options* options )
 					}
 				}
 
-				cout << "запуск функции по распаковке архива" << endl;
+				try
+				{
+					_archivator.ExtractFiles( options );
+				}
+				catch( archive_exception e )
+				{
+					e.ShowMessage();
+				}
 			}
 			else
 			{
@@ -73,21 +91,50 @@ void switcher_task::RunTask( archive_options* options )
 
 		case REMOVING:
 
-			cout << "запуск удаления файлов (кидает исключение если нет файлов с таким именем)" << endl;
+			try
+			{
+				_archivator.RemoveFiles( options );
+			}
+			catch( archive_exception e )
+			{
+				e.ShowMessage();
+			}
+			
 			break;
 
 		case VIEW_TITLE:
 
-			// vector<title_node> title = null;
-			cout << "запуск функции которая возвращает вектор со структурами title_node" << endl;
-			// PrintTitle( title );
+			try
+			{
+				vector<title_node> title = null;
+				title = _archivator.GetTitle( options );
+				PrintTitle( title );
+			}
+			catch( archive_exception e )
+			{
+				e.ShowMessage();
+			}
+
 			break;
 
 		case CHECK:
 
-			cout << " запуск функции проверки целостности " << endl;//, которая считывает 
-			// записанный после архивации размер запакованного архива и
- 			// и сравнивает его с размером на данный момент"
+			try
+			{
+				if( _archivator.ChechIntegrity( options ) )
+				{
+					cout << "Arсhive is integrite." << endl;
+				}
+				else
+				{
+					cerr << "Archive is dameged." << endl;
+				}
+			}
+			catch( archive_exception e )
+			{
+				e.ShowMessage();
+			}
+
 			break;
 
 		default:

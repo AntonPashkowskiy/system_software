@@ -6,7 +6,7 @@
 #endif
 #include "../exceptions/archive_exceptions.h"
 #include "archive_options.h"
-#include "title_node.h"
+#include "../archivation/title_node.h"
 
 using namespace std;
 
