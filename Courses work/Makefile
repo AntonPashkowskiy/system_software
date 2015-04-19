@@ -1,22 +1,29 @@
-CC=g++
-CFLAGS=-c -std=c++11 -g -Wall -D_GNU_SOURCE 
-LDFLAGS=-pthread
-SOURCES=sourses/main.cpp sourses/options/argument_handler.cpp sourses/exceptions/archive_exceptions.cpp sourses/options/switcher_task.cpp
-OBJECTS=$(SOURCES:.cpp=.o)
-EXECUTABLE=masher
+CC = g++
+CFLAGS = -c -std=c++11 -g -Wall -D_GNU_SOURCE 
+LDFLAGS = -pthread
+SOURCES = sourses/main.cpp sourses/exceptions/archive_exceptions.cpp sourses/options/argument_handler.cpp sourses/options/switcher_task.cpp sourses/archivation/masher_archivator.cpp
+OBJECTS = $(SOURCES:.cpp=.o)
+TARGET_PATH = /usr/bin
+EXECUTABLE = masher
 
-all: $(SOURCES) $(EXECUTABLE)
+all: $(SOURSES) $(EXECUTABLE)
 	
 $(EXECUTABLE): $(OBJECTS) 
 	$(CC) $(OBJECTS) $(LDFLAGS) -o $@
 
-.cpp.o: $(SOURCES)
+.cpp.o: $(SOURSES)
 	$(CC) $(CFLAGS) $< -o $@
 
-clean: $(SOURCES)
+clean: $(SOURSES)
 	rm $(OBJECTS) $(EXECUTABLE)
 
-remake: $(SOURCES)
+remake: $(SOURSES)
 	rm $(OBJECTS) $(EXECUTABLE)
-	$(CC) $(CFLAGS) $(SOURCES)
+	$(CC) $(CFLAGS) $(SOURSES)
 	$(CC) $(OBJECTS) $(LDFLAGS) -o $(EXECUTABLE)
+
+install:
+	install ./$(EXECUTABLE) $(TARGET_PATH)
+
+unistall:
+	rm -rf $(TARGET_PATH)/$(EXECUTABLE) 
