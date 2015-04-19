@@ -14,7 +14,7 @@ void switcher_task::RunTask( archive_options* options )
 {
 	if( options == nullptr ) return;
 
-	archivator* _archivator = new masher_archivator();
+	masher_archivator _archivator;
 
 	switch( options -> requested_operation )
 	{
@@ -93,7 +93,14 @@ void switcher_task::RunTask( archive_options* options )
 
 			try
 			{
-				_archivator.RemoveFiles( options );
+				if( CheckArchiveExisting( options ) )
+				{
+					_archivator.RemoveFiles( options );
+				}
+				else
+				{
+					cerr << "Archive is not found." << endl;
+				}
 			}
 			catch( archive_exception e )
 			{
@@ -106,9 +113,16 @@ void switcher_task::RunTask( archive_options* options )
 
 			try
 			{
-				vector<title_node> title = null;
-				title = _archivator.GetTitle( options );
-				PrintTitle( title );
+				if( CheckArchiveExisting( options ) )
+				{
+					vector<title_node> title;
+					title = _archivator.GetTitle( options );
+					PrintTitle( title );
+				}
+				else
+				{
+					cerr << "Archive is not found." << endl;
+				}
 			}
 			catch( archive_exception e )
 			{
@@ -121,13 +135,20 @@ void switcher_task::RunTask( archive_options* options )
 
 			try
 			{
-				if( _archivator.ChechIntegrity( options ) )
+				if( CheckArchiveExisting( options ) )
 				{
-					cout << "Arсhive is integrite." << endl;
+					if( _archivator.ChechIntegrity( options ) )
+					{
+						cout << "Arсhive is integrite." << endl;
+					}
+					else
+					{
+						cerr << "Archive is dameged." << endl;
+					}
 				}
 				else
 				{
-					cerr << "Archive is dameged." << endl;
+					cerr << "Archive is not found." << endl;
 				}
 			}
 			catch( archive_exception e )
