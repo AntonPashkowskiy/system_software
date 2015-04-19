@@ -5,6 +5,9 @@
 
 class masher_archivator : public archivator
 {
+private:
+	std::vector<char*> GetAllPaths( char* root_path );
+	void Archive( char* target_archive_name, std::vector<char*> paths, bool compress );
 public:
 	void RunArchivation( archive_options* options );
 	void ExtractFiles( archive_options* options );

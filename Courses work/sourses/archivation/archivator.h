@@ -11,11 +11,11 @@
 class archivator
 {
 public:
-	void RunArchivation( archive_options* options ) = 0;
-	void ExtractFiles( archive_options* options ) = 0;
-	void RemoveFiles( archive_options* options ) = 0;
-	std::vector<title_node> GetTitle( archive_options* options ) = 0;
-	bool ChechIntegrity( archive_options* options ) = 0;
+	virtual void RunArchivation( archive_options* options ) = 0;
+	virtual void ExtractFiles( archive_options* options ) = 0;
+	virtual void RemoveFiles( archive_options* options ) = 0;
+	virtual std::vector<title_node> GetTitle( archive_options* options ) = 0;
+	virtual bool ChechIntegrity( archive_options* options ) = 0;
 };
 
 #endif
