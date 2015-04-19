@@ -4,12 +4,12 @@
 class archive_exception
 {
 private:
-	char* message;
-	char* sourse;
+	const char* message = nullptr;
+	const char* sourse = nullptr;
 
 public:
-	archive_exception( char* message );
-	archive_exception( char* sourse, char* message );
+	archive_exception( const char* message );
+	archive_exception( const char* sourse, const char* message );
 	virtual void ShowMessage();
 };
 

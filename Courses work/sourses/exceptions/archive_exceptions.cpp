@@ -1,13 +1,13 @@
 #include "archive_exceptions.h"
 #include <iostream>
 
-archive_exception::archive_exception( char* message )
+archive_exception::archive_exception( const char* message )
 {
 	this -> message = message;
 	this -> sourse = NULL;
 }
 
-archive_exception::archive_exception( char* sourse, char* message )
+archive_exception::archive_exception( const char* sourse, const char* message )
 {
 	this -> message = message;
 	this -> sourse = sourse;
