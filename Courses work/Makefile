@@ -1,7 +1,7 @@
 CC = g++
 CFLAGS = -c -std=c++11 -g -Wall -D_GNU_SOURCE 
 LDFLAGS = -pthread
-SOURCES = sourses/main.cpp sourses/exceptions/archive_exceptions.cpp sourses/options/argument_handler.cpp sourses/options/switcher_task.cpp sourses/archivation/masher_archivator.cpp
+SOURCES = sourses/main.cpp sourses/exceptions/archive_exceptions.cpp sourses/options/argument_handler.cpp sourses/options/switcher_task.cpp sourses/archivation/masher_archivator.cpp sourses/fsystem/fs_tree.cpp
 OBJECTS = $(SOURCES:.cpp=.o)
 TARGET_PATH = /usr/bin
 EXECUTABLE = masher
