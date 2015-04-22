@@ -1,43 +1,40 @@
 #include "masher_archivator.h"
+#include <iostream>
 
-#define RUN_EXCEPTION_MESSAGE " Run archivation exception."
-#define EXTRACTING_EXCEPTION_MESSAGE " Extracting exception."
-#define REMOVING_EXCEPTION_MESSAGE " Removing exception."
-#define TITLE_EXCEPTION_MESSAGE " Title getting exception."
-#define CHECK_EXCEPTION_MESSAGE " Integrity checking exception." 
+#define RUN_EXCEPTION_MESSAGE " Run archivation error."
+#define EXTRACTING_EXCEPTION_MESSAGE " Extracting error."
+#define REMOVING_EXCEPTION_MESSAGE " Removing error."
+#define TITLE_EXCEPTION_MESSAGE " Title getting error."
+#define CHECK_EXCEPTION_MESSAGE " Integrity checking error." 
 
 using namespace std;
 
 void masher_archivator::RunArchivation( archive_options* options )
 {
-	/*int archive_descriptor = open( options -> target_archive_name, O_CREAT | O_WRONLY | O_TRUNC );
+	vector<file_system_object> target_files;
+	vector<files_tree*> trees_vector;
 
-	if( archive_descriptor == -1 )
+	for ( unsigned int i = 0; i < (options -> paths).size(); i++ )
 	{
-		throw new archive_exception( RUN_EXCEPTION_MESSAGE );
-	}*/
+		files_tree* tree = new files_tree( (options -> paths)[ i ], options -> include_hidden_files );
+		tree -> GetNodes( target_files );
+		trees_vector.push_back( tree );
+	}
 
-	vector<char*> target_paths;
-	vector<char*> temp;
-
-	for ( int i = 0; i < (options -> paths).size(); i++ )
+	try
 	{
-		temp = GetAllPaths( (options -> paths)[ i ] );
-
-		for( int j = temp.size() - 1; j >= 0; j-- )
+		if( options -> requested_operation == CREATE_WITHOUT_COMPRESSING )
 		{
-			target_paths.push_back( temp.back() );
-			temp.pop_back();
+			Archive( options -> target_archive_name, target_files, false );
+		}
+		else
+		{
+			Archive( options -> target_archive_name, target_files, true );
 		}
 	}
-
-	if( options -> requested_operation == CREATE_WITHOUT_COMPRESSING )
+	catch( archive_exception e )
 	{
-		Archive( options -> target_archive_name, target_paths, false );
-	}
-	else
-	{
-		Archive( options -> target_archive_name, target_paths, true );
+		e.ShowMessage();
 	}
 }
 
@@ -59,4 +56,14 @@ std::vector<title_node> masher_archivator::GetTitle( archive_options* options )
 bool masher_archivator::ChechIntegrity( archive_options* options )
 {
 	throw archive_exception( CHECK_EXCEPTION_MESSAGE );
+}
+
+// ------------------------------------------------------------------------
+
+void masher_archivator::Archive( char* target_archive_name, std::vector<file_system_object>& files, bool compress )
+{
+	for( unsigned int i = 0; i < files.size(); i++ )
+	{
+		cout << files[ i ].full_path << endl;
+	}
 }
