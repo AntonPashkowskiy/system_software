@@ -160,7 +160,7 @@ void switcher_task::RunTask( archive_options* options )
 
 		default:
 			// никогда не произойдёт потому что комманд
-			// HELP, COMMENT, UNDEFINED на данном этапе нет
+			// HELP, COMMENT, UNDEFINED, INCLUDE_HIDDEN_FILES на данном этапе нет
 			break;
 	}
 }

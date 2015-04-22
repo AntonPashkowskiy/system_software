@@ -16,7 +16,8 @@ void argument_handler::ShowHelp()
 		 << "flag: -ext    extract files from archive." << endl
 		 << "flag: -vt     view title." << endl
 		 << "flag: -cmt    add а comment to archive."
-		 << "flag: -check  check archive integrity.\n" << endl
+		 << "flag: -check  check archive integrity." << endl
+		 << "flag: -hd     include hidden files.\n" << endl
 		 << "EXAMPLES:" << endl
 		 << "example: masher -cr archive.msr somedirectory somefiles" << endl
 		 << "example: masher -crc archive.msr somedirectory somefiles" << endl
@@ -24,7 +25,8 @@ void argument_handler::ShowHelp()
 		 << "example: masher -vt archive.msr" << endl
 		 << "example: masher -ext archive.msr target_directory (current by default)" << endl
 		 << "example: masher -crc archive.msr somedirectory somefiles -cmt \"Comment\"" << endl
-		 << "example: masher -check archive.msr\n" << endl;
+		 << "example: masher -check archive.msr\n" << endl
+		 << "example: masher -cr archive.msr somedirectory somefiles -hd -cmt comment" << endl;
 }
 
 archive_options* argument_handler::ProcessArgument( int argc, char** argv )
@@ -64,15 +66,13 @@ archive_options* argument_handler::ProcessArgument( int argc, char** argv )
 				{
 					for( int i = 3; i < argc; i++ )
 					{
-						// для отлова возможного флага комментария
+						// для отлова возможного флага комментария или включения скрытых файлов
 						Operation check_flag = GetFlag( argv[ i ] );
 							
 						if( check_flag == UNDEFINED && CheckPath( argv[ i ] ) )
 						{
 							// проверяем аргументы на дублирование.
-							int paths_count = (options -> paths).size();
-							
-							for( int j = 0; j < paths_count; j++ )
+							for( unsigned int j = 0; j < (options -> paths).size(); j++ )
 							{
 								if( strcmp( argv[ i ], (options -> paths)[ j ] ) == 0 )
 								{
@@ -83,6 +83,19 @@ archive_options* argument_handler::ProcessArgument( int argc, char** argv )
 
 							(options -> paths).push_back( argv[ i ] );
 						}
+						// встретился флаг включения скрытых файлов который
+						// должен быть либо последним либо стоять перед комментарием
+						else if( check_flag == INCLUDE_HIDDEN_FILES && 
+							   ( argc == i + 1 || GetFlag( argv[ i + 1 ] ) == COMMENT ) )
+						{
+							if( (options -> paths).size() == 0 )
+							{
+								cerr << "Error. Not enought arguments. Apply --help." << endl;
+								return nullptr;
+							}
+
+							options -> include_hidden_files = true;
+						}
 						else if( check_flag == COMMENT && argc == i + 2 ) 
 						{
 							// если комментарий найден а путей никаких нет
@@ -92,7 +105,6 @@ archive_options* argument_handler::ProcessArgument( int argc, char** argv )
 								return nullptr;
 							}
 							// если таки нашли комментарий - добавляем его текст
-							// в опции и выходим - а после комментария хоть rm -rf
 							options -> comment = argv[ i + 1 ];
 							return options;
 						}
@@ -214,6 +226,11 @@ archive_options* argument_handler::ProcessArgument( int argc, char** argv )
 					return nullptr;
 				}
 
+			case INCLUDE_HIDDEN_FILES:
+
+				cerr << "-hd flag using only with (-cr/-crc) flags. Apply --help." << endl;
+				return nullptr;
+
 			case UNDEFINED:
 
 				cerr << "Error. Undefined flag: " << argv[ 1 ] << ". Apply --help." << endl;
@@ -242,6 +259,7 @@ Operation argument_handler::GetFlag( char* flag )
 	if( strcmp( flag, "-rmf" ) == 0 )   return REMOVING;
 	if( strcmp( flag, "-cmt" ) == 0 )   return COMMENT;
 	if( strcmp( flag, "-check" ) == 0 ) return CHECK;
+	if( strcmp( flag, "-hd" ) == 0 ) 	return INCLUDE_HIDDEN_FILES;
 
 	return UNDEFINED;
 }
@@ -355,6 +373,10 @@ void argument_handler::Test( archive_options* options )
 			cout << "Operation: COMMENT." << endl;
 			break;
 
+		case INCLUDE_HIDDEN_FILES:
+			cout << "Operation: INCLUDE_HIDDEN_FILES" << endl;
+			break;
+
 		case HELP:
 			cout << "Operation: HELP." << endl;
 			break;
@@ -378,6 +400,8 @@ void argument_handler::Test( archive_options* options )
 	{
 		cout << "Comment: " << (options -> comment) << endl;
 	}
+
+	cout << "Include hidden files: " << (options -> include_hidden_files) << endl;
 
 	vector<char*> vector = options -> paths;
 	int length = vector.size();

@@ -14,7 +14,8 @@ enum Operation { CREATE_WITHOUT_COMPRESSING,
 				 CHECK, 
 				 VIEW_TITLE, 
 				 COMMENT, 
-				 HELP, 
+				 HELP,
+				 INCLUDE_HIDDEN_FILES, 
 				 UNDEFINED };
 
 // опции которые необходимо определить для дальнейшей работы программы
@@ -25,6 +26,7 @@ struct archive_options
 	char* target_path = nullptr;
 	char* comment = nullptr;
 	std::vector<char*> paths;
+	bool include_hidden_files = false;
 };
 
 #endif
