@@ -23,12 +23,6 @@ void switcher_task::RunTask( archive_options* options )
 
 			if( CheckPermissions( options ) )
 			{
-				if( options -> comment != nullptr )
-				{
-					char* path_to_file = CreateFileWithComment( options -> comment );
-					(options -> paths).push_back( path_to_file );
-				}
-
 				try
 				{
 					_archivator.RunArchivation( options );
@@ -158,9 +152,14 @@ void switcher_task::RunTask( archive_options* options )
 
 			break;
 
+		case HELP:
+
+			ShowHelp();
+			break;
+
 		default:
 			// никогда не произойдёт потому что комманд
-			// HELP, COMMENT, UNDEFINED, INCLUDE_HIDDEN_FILES на данном этапе нет
+			// COMMENT, UNDEFINED, INCLUDE_HIDDEN_FILES на данном этапе нет
 			break;
 	}
 }
@@ -206,25 +205,6 @@ bool switcher_task::CheckPermissions( archive_options* options )
 	return result;
 }
 
-void switcher_task::PrintTitle( vector<title_node> title )
-{
-
-}
-
-// создание файла с комментарием
-char* switcher_task::CreateFileWithComment( char* comment )
-{
-	char* path = "CommentTempFile.msrc";
-	int file_descriptor = open( path, O_CREAT | O_WRONLY | O_TRUNC );
-
-	if( file_descriptor != -1 )
-	{
-		write( file_descriptor, comment, strlen( comment ) );
-	}
-	
-	return path;
-}
-
 // проверка существования архива
 bool switcher_task::CheckArchiveExisting( archive_options* options )
 {
@@ -249,4 +229,32 @@ bool switcher_task::CheckTargetPath( char* path )
 
 	delete statistics;
 	return false;
+}
+
+void switcher_task::PrintTitle( vector<title_node> title )
+{
+
+}
+
+void switcher_task::ShowHelp()
+{
+	cout << "\n ----------------- HELP -----------------\n" << endl
+		 << "FLAGS:" << endl
+		 << "flag: -cr     create archive without compressing." << endl
+		 << "flag: -crc    create archive with compressing." << endl
+		 << "flag: -rmf    remove files from archive." << endl
+		 << "flag: -ext    extract files from archive." << endl
+		 << "flag: -vt     view title." << endl
+		 << "flag: -cmt    add а comment to archive."
+		 << "flag: -check  check archive integrity." << endl
+		 << "flag: -hd     include hidden files.\n" << endl
+		 << "EXAMPLES:" << endl
+		 << "example: masher -cr archive.msr somedirectory somefiles" << endl
+		 << "example: masher -crc archive.msr somedirectory somefiles" << endl
+		 << "example: masher -rmf archive.msr filenames" << endl
+		 << "example: masher -vt archive.msr" << endl
+		 << "example: masher -ext archive.msr target_directory (current by default)" << endl
+		 << "example: masher -crc archive.msr somedirectory somefiles -cmt \"Comment\"" << endl
+		 << "example: masher -check archive.msr" << endl
+		 << "example: masher -cr archive.msr somedirectory somefiles -hd -cmt comment\n" << endl;
 }

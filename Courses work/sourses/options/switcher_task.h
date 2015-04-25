@@ -20,14 +20,16 @@ using namespace std;
 class switcher_task
 {
 private:
+
 	static bool CheckPermissions( archive_options* options );
-	// проверяет есть ли путь в текущей папке
+	// проверяет есть ли архив по заданному пути
 	static bool CheckArchiveExisting( archive_options* options );
 	// целевой путь должен быть путём директории.
 	static bool CheckTargetPath( char* path );
+	// вывод справки
+	static void ShowHelp();
+	// вывод заголовка архива
 	static void PrintTitle( vector<title_node> title );
-	// возвращает путь к файлу
-	static char* CreateFileWithComment( char* comment );
 public:
 	static void RunTask( archive_options* options );
 };

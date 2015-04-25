@@ -12,7 +12,7 @@
 class masher_archivator : public archivator
 {
 private:
-	void Archive( char* target_archive_name, std::vector<file_system_object>& files, bool compress );
+	void Archive( char* target_archive_name, std::vector<file_system_object>& files, char* comment, bool compress );
 public:
 	void RunArchivation( archive_options* options );
 	void ExtractFiles( archive_options* options );

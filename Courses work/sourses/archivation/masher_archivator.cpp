@@ -25,11 +25,11 @@ void masher_archivator::RunArchivation( archive_options* options )
 	{
 		if( options -> requested_operation == CREATE_WITHOUT_COMPRESSING )
 		{
-			Archive( options -> target_archive_name, target_files, false );
+			Archive( options -> target_archive_name, target_files, options -> comment, false );
 		}
 		else
 		{
-			Archive( options -> target_archive_name, target_files, true );
+			Archive( options -> target_archive_name, target_files, options -> comment, true );
 		}
 	}
 	catch( archive_exception e )
@@ -60,8 +60,15 @@ bool masher_archivator::ChechIntegrity( archive_options* options )
 
 // ------------------------------------------------------------------------
 
-void masher_archivator::Archive( char* target_archive_name, std::vector<file_system_object>& files, bool compress )
+void masher_archivator::Archive (
+
+	char* target_archive_name, 
+	std::vector<file_system_object>& files, 
+	char* comment, 
+	bool compress 
+)
 {
+	cout << "Comment: " << comment << "\n\n";
 	for( unsigned int i = 0; i < files.size(); i++ )
 	{
 		cout << files[ i ].full_path << endl;

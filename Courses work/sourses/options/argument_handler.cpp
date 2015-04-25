@@ -2,34 +2,9 @@
 #include <iostream>
 #include <string.h>
 
-// checking users commands
-
 using namespace std;
 
-void argument_handler::ShowHelp()
-{
-	cout << "\n ----------------- HELP -----------------\n" << endl
-		 << "FLAGS:" << endl
-		 << "flag: -cr     create archive without compressing." << endl
-		 << "flag: -crc    create archive with compressing." << endl
-		 << "flag: -rmf    remove files from archive." << endl
-		 << "flag: -ext    extract files from archive." << endl
-		 << "flag: -vt     view title." << endl
-		 << "flag: -cmt    add а comment to archive."
-		 << "flag: -check  check archive integrity." << endl
-		 << "flag: -hd     include hidden files.\n" << endl
-		 << "EXAMPLES:" << endl
-		 << "example: masher -cr archive.msr somedirectory somefiles" << endl
-		 << "example: masher -crc archive.msr somedirectory somefiles" << endl
-		 << "example: masher -rmf archive.msr filenames" << endl
-		 << "example: masher -vt archive.msr" << endl
-		 << "example: masher -ext archive.msr target_directory (current by default)" << endl
-		 << "example: masher -crc archive.msr somedirectory somefiles -cmt \"Comment\"" << endl
-		 << "example: masher -check archive.msr\n" << endl
-		 << "example: masher -cr archive.msr somedirectory somefiles -hd -cmt comment" << endl;
-}
-
-archive_options* argument_handler::ProcessArgument( int argc, char** argv )
+archive_options* argument_handler::ProcessArguments( int argc, char** argv )
 {
 	if( argc > 1 )
 	{
@@ -39,8 +14,8 @@ archive_options* argument_handler::ProcessArgument( int argc, char** argv )
 
 		if( operation == HELP )
 		{
-			ShowHelp();
-			return nullptr;
+			options -> requested_operation = HELP;
+			return options;
 		}
 
 		// устанавливаем целевой архив
@@ -333,86 +308,4 @@ bool argument_handler::IsDeniedSymbol( char symbol, bool is_path )
 	}
 
 	return false;
-}
-
-// функция для тестирования возвращённых опций
-void argument_handler::Test( archive_options* options )
-{
-	if( options == nullptr )
-	{
-		cout << "Is null pointer." << endl;
-	}
-
-	switch( options -> requested_operation )
-	{
-		case CREATE_WITHOUT_COMPRESSING:
-			cout << "Operation: CREATE_WITHOUT_COMPRESSING." << endl;
-			break;
-
-		case CREATE_WITH_COMPRESSING:
-			cout << "Operation: CREATE_WITH_COMPRESSING." << endl;
-			break;
-
-		case EXTRACTING:
-			cout << "Operation: EXTRACTING." << endl;
-			break;
-
-		case REMOVING:
-			cout << "Operation: REMOVING." << endl;
-			break;
-
-		case CHECK:
-			cout << "Operation: CHECK." << endl;
-			break;
-
-		case VIEW_TITLE:
-			cout << "Operation: VIEW_TITLE." << endl;
-			break;
-
-		case COMMENT: 
-			cout << "Operation: COMMENT." << endl;
-			break;
-
-		case INCLUDE_HIDDEN_FILES:
-			cout << "Operation: INCLUDE_HIDDEN_FILES" << endl;
-			break;
-
-		case HELP:
-			cout << "Operation: HELP." << endl;
-			break;
-
-		case UNDEFINED:
-			cout << "Operation: UNDEFINED." << endl;
-			break;  
-	}
-
-	if( options -> target_archive_name != nullptr )
-	{
-		cout << "Target archive name: " << (options -> target_archive_name) << endl;
-	}
-
-	if( options -> target_path != nullptr )
-	{
-		cout << "Target path: " << (options -> target_path) << endl;
-	}
-
-	if( options -> comment != nullptr )
-	{
-		cout << "Comment: " << (options -> comment) << endl;
-	}
-
-	cout << "Include hidden files: " << (options -> include_hidden_files) << endl;
-
-	vector<char*> vector = options -> paths;
-	int length = vector.size();
-
-	if( length != 0 )
-	{
-		cout << "Paths: " << endl;
-
-		for( int i = 0; i < length; i++ )
-		{
-			cout << vector[ i ] << endl; 
-		}
-	}	
 }
