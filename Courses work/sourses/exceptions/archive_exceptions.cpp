@@ -4,24 +4,25 @@
 archive_exception::archive_exception( const char* message )
 {
 	this -> message = message;
-	this -> sourse = NULL;
 }
 
-archive_exception::archive_exception( const char* sourse, const char* message )
+archive_exception::archive_exception( const char* message, archive_exception& inner_exception )
 {
 	this -> message = message;
-	this -> sourse = sourse;
+	*(this -> inner_exception) = inner_exception;
 }
 
-void archive_exception::ShowMessage()
+const char* archive_exception::GetMessage()
 {
-	if( message != NULL )
+	return message;
+}
+
+archive_exception archive_exception::GetInnerException()
+{
+	if( inner_exception != nullptr )
 	{
-		std::cerr << "Exception message:" << message << std::endl; 
+		return *inner_exception;
 	}
 
-	if( sourse != NULL )
-	{
-		std::cerr << "Exception sourse: " << sourse << std::endl;
-	}
+	return archive_exception( "" );
 }
