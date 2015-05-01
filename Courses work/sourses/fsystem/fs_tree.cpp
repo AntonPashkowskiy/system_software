@@ -1,17 +1,49 @@
 #include "fs_tree.h"
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
 #include <dirent.h>
 #include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
 #include <iostream>
 
 using namespace std;
 
-files_tree::files_tree( char* root_path, bool with_hidden )
+files_tree::files_tree( char* root_path, bool with_hidden, int tree_id )
 {
+	this -> tree_id = tree_id;
+	// нужен для уникальной идентификации всех узлов
 	int root_id = 0;
 	// флаг необходимости добавлять скрытые файлы
 	this -> with_hidden = with_hidden;
 	Initialize( root_path, nullptr, root_id, 0, root_node );
+}
+
+files_tree::files_tree( vector<file_system_object>& nodes )
+{
+	if( nodes.size() != 0 ) 
+	{
+		for ( unsigned int i = 0; i < nodes.size(); i++ )
+		{
+			if( nodes[ i ].object_id == 0 && nodes[ i ].parent_id == 0 )
+			{
+				this -> tree_id = nodes[ i ].tree_id;
+				char* current_prefix = new char[ 2 ];
+				strcpy( current_prefix, "." );
+				root_node.full_path = CreatePath( current_prefix, nodes[ i ].file_name );	
+				MapObject( nodes[ i ], root_node );
+
+				if( root_node.type == DIRECTORY )
+				{
+					Recreate( nodes, root_node );
+				}
+				
+				delete current_prefix;
+				break;
+			}
+		}
+	}
 }
 
 files_tree::~files_tree()
@@ -223,4 +255,76 @@ void files_tree::MapNode( files_tree_node& node, file_system_object& object )
 	object.type = node.type;
 	object.object_id = node.id;
 	object.parent_id = node.parent_id;
+	object.tree_id = this -> tree_id;
+}
+
+void files_tree::MapObject( file_system_object& object, files_tree_node& node )
+{
+	int length = strlen( object.file_name );
+	node.file_name = new char[ length + 1 ];
+	strcpy( node.file_name, object.file_name );
+	node.type = object.type;
+	node.id = object.object_id;
+	node.parent_id = object.parent_id;
+}
+
+void files_tree::Recreate( vector<file_system_object>& nodes, files_tree_node& parent_node )
+{
+	for ( unsigned int i = 0; i < nodes.size(); i++ )
+	{
+		if( nodes[ i ].parent_id == parent_node.id && nodes[ i ].object_id != parent_node.id )
+		{
+			files_tree_node node;
+			node.full_path = CreatePath( parent_node.full_path, nodes[ i ].file_name );
+			MapObject( nodes[ i ], node );
+
+			if( node.type == DIRECTORY )
+			{
+				Recreate( nodes, node );
+			}	
+
+			parent_node.child_nodes.push_back( node );
+		}
+	}
+}
+
+void files_tree::CreateFilesTree( const char* target_path )
+{
+	if( target_path != nullptr )
+	{
+		if( chdir( target_path ) == 0 )
+		{
+			CreateFiles( root_node );
+		}
+	}
+	else
+	{
+		CreateFiles( root_node );
+	}
+}
+
+void files_tree::CreateFiles( files_tree_node& node )
+{
+	if( node.type == DIRECTORY )
+	{
+		if( mkdir( node.full_path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH | S_IWOTH ) == 0 )
+		{
+			for( unsigned int i = 0; i < node.child_nodes.size(); i++ )
+			{
+				CreateFiles( node.child_nodes[ i ] );
+			}
+		}
+		else
+		{
+			cerr << "Directory not created: " << node.full_path << endl;
+		}
+	}
+	else if( node.type == REGULAR )
+	{
+		if( open( node.full_path, O_CREAT | O_RDWR | O_TRUNC, 
+			S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH | S_IWOTH  ) == -1)
+		{
+			cerr << "File not created: " << node.full_path << endl;
+		}
+	}
 }

@@ -9,6 +9,7 @@ struct file_system_object
 	file_type type;
 	int object_id;
 	int parent_id;
+	int tree_id;
 };
 
 #endif
