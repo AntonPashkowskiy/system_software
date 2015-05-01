@@ -1,12 +1,6 @@
 #include "masher_archivator.h"
 #include <iostream>
 
-#define RUN_EXCEPTION_MESSAGE " Run archivation error."
-#define EXTRACTING_EXCEPTION_MESSAGE " Extracting error."
-#define REMOVING_EXCEPTION_MESSAGE " Removing error."
-#define TITLE_EXCEPTION_MESSAGE " Title getting error."
-#define CHECK_EXCEPTION_MESSAGE " Integrity checking error." 
-
 using namespace std;
 
 void masher_archivator::RunArchivation( archive_options* options )
@@ -16,7 +10,7 @@ void masher_archivator::RunArchivation( archive_options* options )
 
 	for ( unsigned int i = 0; i < (options -> paths).size(); i++ )
 	{
-		files_tree* tree = new files_tree( (options -> paths)[ i ], options -> include_hidden_files );
+		files_tree* tree = new files_tree( (options -> paths)[ i ], options -> include_hidden_files, i );
 		tree -> GetNodes( target_files );
 		trees_vector.push_back( tree );
 	}
@@ -34,28 +28,28 @@ void masher_archivator::RunArchivation( archive_options* options )
 	}
 	catch( archive_exception e )
 	{
-		e.ShowMessage();
+		throw archive_exception( "Run archivation error.", e );
 	}
 }
 
 void masher_archivator::ExtractFiles( archive_options* options )
 {
-	throw archive_exception( EXTRACTING_EXCEPTION_MESSAGE );
+	throw archive_exception( "Extracting error." );
 }
 
 void masher_archivator::RemoveFiles( archive_options* options )
 {
-	throw archive_exception( REMOVING_EXCEPTION_MESSAGE );
+	throw archive_exception( "Removing error." );
 }
 
 std::vector<title_node> masher_archivator::GetTitle( archive_options* options )
 {
-	throw archive_exception( TITLE_EXCEPTION_MESSAGE );
+	throw archive_exception( "Title view error." );
 }
 
 bool masher_archivator::ChechIntegrity( archive_options* options )
 {
-	throw archive_exception( CHECK_EXCEPTION_MESSAGE );
+	throw archive_exception( "Checking integrity error." );
 }
 
 // ------------------------------------------------------------------------
@@ -63,14 +57,10 @@ bool masher_archivator::ChechIntegrity( archive_options* options )
 void masher_archivator::Archive (
 
 	char* target_archive_name, 
-	std::vector<file_system_object>& files, 
+	vector<file_system_object>& files, 
 	char* comment, 
 	bool compress 
 )
 {
-	cout << "Comment: " << comment << "\n\n";
-	for( unsigned int i = 0; i < files.size(); i++ )
-	{
-		cout << files[ i ].full_path << endl;
-	}
+
 }
