@@ -7,8 +7,8 @@
 #include <fcntl.h>
 #include <string.h>
 
-
 using namespace std;
+void print_exception_information( archive_exception& e );
 
 void switcher_task::RunTask( archive_options* options )
 {
@@ -26,13 +26,12 @@ void switcher_task::RunTask( archive_options* options )
 				try
 				{
 					_archivator.RunArchivation( options );
+					cout << "Archiving completed successfully" << endl;
 				}
 				catch( archive_exception e )
 				{
-					e.ShowMessage();
+					print_exception_information( e );
 				}
-
-				cout << "Archiving completed successfully" << endl;
 			}
 			else
 			{
@@ -73,7 +72,7 @@ void switcher_task::RunTask( archive_options* options )
 				}
 				catch( archive_exception e )
 				{
-					e.ShowMessage();
+					print_exception_information( e );
 				}
 			}
 			else
@@ -98,7 +97,7 @@ void switcher_task::RunTask( archive_options* options )
 			}
 			catch( archive_exception e )
 			{
-				e.ShowMessage();
+				print_exception_information( e );
 			}
 			
 			break;
@@ -120,7 +119,7 @@ void switcher_task::RunTask( archive_options* options )
 			}
 			catch( archive_exception e )
 			{
-				e.ShowMessage();
+				print_exception_information( e );
 			}
 
 			break;
@@ -147,7 +146,7 @@ void switcher_task::RunTask( archive_options* options )
 			}
 			catch( archive_exception e )
 			{
-				e.ShowMessage();
+				print_exception_information( e );
 			}
 
 			break;
@@ -257,4 +256,10 @@ void switcher_task::ShowHelp()
 		 << "example: masher -crc archive.msr somedirectory somefiles -cmt \"Comment\"" << endl
 		 << "example: masher -check archive.msr" << endl
 		 << "example: masher -cr archive.msr somedirectory somefiles -hd -cmt comment\n" << endl;
+}
+
+void print_exception_information( archive_exception& e )
+{
+	cerr << e.GetMessage() << endl;
+	cerr << e.GetInnerException().GetMessage() << endl; 
 }
