@@ -157,8 +157,6 @@ void switcher_task::RunTask( archive_options* options )
 			break;
 
 		default:
-			// никогда не произойдёт потому что комманд
-			// COMMENT, UNDEFINED, INCLUDE_HIDDEN_FILES на данном этапе нет
 			break;
 	}
 }

@@ -321,10 +321,14 @@ void files_tree::CreateFiles( files_tree_node& node )
 	}
 	else if( node.type == REGULAR )
 	{
-		if( open( node.full_path, O_CREAT | O_RDWR | O_TRUNC, 
-			S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH | S_IWOTH  ) == -1)
+		int descriptor = open( node.full_path, O_CREAT | O_RDWR | O_TRUNC, 
+			S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH | S_IWOTH  );
+
+		if( descriptor == -1)
 		{
 			cerr << "File not created: " << node.full_path << endl;
 		}
+
+		close( descriptor );
 	}
 }
