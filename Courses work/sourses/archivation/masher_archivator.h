@@ -4,11 +4,6 @@
 #include "../fsystem/fs_tree.h"
 #include "../exceptions/archive_exceptions.h"
 
-#if !defined( STD_LIST )
-#define STD_LIST
-#include <list>
-#endif
-
 typedef unsigned long long size_f;
 
 class masher_archivator : public archivator
@@ -22,12 +17,14 @@ private:
 	int WriteTitle( int archive_fd, vector<title_node> title, bool compress );
 	int WriteComment( int archive_fd, char* comment );
 	void WriteTotalSize( int archive_fd, size_f total_size );
+	// методы получения заголовка
+	archive_title CreateTitle( title_node* title_elements, int count, char* comment );
 public:
 	void RunArchivation( archive_options* options );
 	void ExtractFiles( archive_options* options );
 	void RemoveFiles( archive_options* options );
-	std::vector<title_node> GetTitle( archive_options* options );
-	bool ChechIntegrity( archive_options* options );
+	archive_title GetTitle( archive_options* options );
+	bool CheckIntegrity( archive_options* options );
 };
 
 #endif

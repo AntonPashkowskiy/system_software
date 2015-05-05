@@ -4,9 +4,11 @@
 #define STL_VECTOR
 #include <vector>
 #endif
-#include "../exceptions/archive_exceptions.h"
 #include "archive_options.h"
-#include "../archivation/title_node.h"
+#include "../exceptions/archive_exceptions.h"
+#include "../archivation/archivator.h"
+#include "../archivation/masher_archivator.h"
+#include "../archivation/title.h"
 
 using namespace std;
 
@@ -20,7 +22,6 @@ using namespace std;
 class switcher_task
 {
 private:
-
 	static bool CheckPermissions( archive_options* options );
 	// проверяет есть ли архив по заданному пути
 	static bool CheckArchiveExisting( archive_options* options );
@@ -29,7 +30,7 @@ private:
 	// вывод справки
 	static void ShowHelp();
 	// вывод заголовка архива
-	static void PrintTitle( vector<title_node> title );
+	static void PrintTitle( archive_title title );
 public:
 	static void RunTask( archive_options* options );
 };

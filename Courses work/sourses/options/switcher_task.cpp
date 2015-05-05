@@ -1,11 +1,10 @@
 #include "switcher_task.h"
-#include "../archivation/archivator.h"
-#include "../archivation/masher_archivator.h"
 #include <iostream>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <string.h>
+#include <iomanip>
 
 using namespace std;
 void print_exception_information( archive_exception& e );
@@ -108,8 +107,7 @@ void switcher_task::RunTask( archive_options* options )
 			{
 				if( CheckArchiveExisting( options ) )
 				{
-					vector<title_node> title;
-					title = _archivator.GetTitle( options );
+					archive_title title = _archivator.GetTitle( options );;
 					PrintTitle( title );
 				}
 				else
@@ -130,13 +128,13 @@ void switcher_task::RunTask( archive_options* options )
 			{
 				if( CheckArchiveExisting( options ) )
 				{
-					if( _archivator.ChechIntegrity( options ) )
+					if( _archivator.CheckIntegrity( options ) )
 					{
 						cout << "Arсhive is integrite." << endl;
 					}
 					else
 					{
-						cerr << "Archive is dameged." << endl;
+						cerr << "Archive is damaged." << endl;
 					}
 				}
 				else
@@ -228,9 +226,25 @@ bool switcher_task::CheckTargetPath( char* path )
 	return false;
 }
 
-void switcher_task::PrintTitle( vector<title_node> title )
+void switcher_task::PrintTitle( archive_title title )
 {
+	cout << endl;
 
+	if( title.comment != nullptr )
+	{
+		cout << "Comment: " << title.comment << endl;
+	}
+
+	cout << "----------------------------------------------------------------------------" << endl;
+	
+	for( unsigned int i = 0; i < title.nodes.size(); i++ )
+	{
+		cout << setw( 60 ) << left << title.nodes[ i ].file_name;
+		cout << ( title.nodes[ i ].file_type == 'd' ? " : directory" : " : regular file" ) << endl;
+	}
+
+	cout << "----------------------------------------------------------------------------" << endl;
+	cout << endl;
 }
 
 void switcher_task::ShowHelp()

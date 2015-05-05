@@ -50,17 +50,220 @@ void masher_archivator::RemoveFiles( archive_options* options )
 	throw archive_exception( "Removing error." );
 }
 
-std::vector<title_node> masher_archivator::GetTitle( archive_options* options )
+// ------------------------------------------------------------------------------------
+
+void raise_title_getting_error( int descriptor )
 {
-	throw archive_exception( "Title view error." );
+	// закрываем архив и выбрасываем исключение.
+	close( descriptor );
+	throw archive_exception( "Title getting error. Read error." );
 }
 
-bool masher_archivator::ChechIntegrity( archive_options* options )
+/*
+	Кода обработки ошибок здесь больше чем бизнес-логики, что и понятно - 
+	проверяется результат работы абсолютно всех системных вызовов. 
+	Если этого не делать - это чревато абсолютной билибердой у пользователя. 
+*/
+
+archive_title masher_archivator::GetTitle( archive_options* options )
 {
-	throw archive_exception( "Checking integrity error." );
+	// проверяем целостность архива
+	// до этого момента нам известно только то что файл архива существует
+	try
+	{
+		bool is_integrite = CheckIntegrity( options );
+
+		if( !is_integrite )
+		{
+			throw archive_exception( "Title getting error. Archive is damaged." );
+		}
+	}
+	catch( archive_exception e )
+	{
+		throw archive_exception( "Title getting error.", e );
+	}
+
+	char comment_flag;
+	char* comment = nullptr;
+	int comment_length = 0;
+	int bytes_read = 0;
+	int archive_descriptor = open( options -> target_archive_name, O_RDONLY );
+
+	if( archive_descriptor == -1 )
+	{
+		throw archive_exception( "Title getting error." );
+	}
+
+	// смещаемся на длинну файла и на флаг наличия комментария
+	int offset = -( sizeof( char ) + sizeof( size_f ) );
+	int position = lseek( archive_descriptor, offset, SEEK_END );
+	
+	if( position != -1 )
+	{
+		bytes_read = read( archive_descriptor, &comment_flag, sizeof( char ) );
+
+		if( comment_flag == 'c' && bytes_read == sizeof( char ) )
+		{
+			// считывание длинны комментария
+			offset = position - sizeof( int );
+			
+			if( (position = lseek( archive_descriptor, offset, SEEK_SET )) != -1 )
+			{
+				bytes_read = read( archive_descriptor, &comment_length, sizeof( int ) );
+
+				if( comment_length >= 0 && bytes_read == sizeof( int ) )
+				{
+					// смещение на позицию начала комментария
+					offset -= comment_length;
+					
+					if( (position = lseek( archive_descriptor, offset, SEEK_SET )) != -1)
+					{
+						// считывание комментария
+						comment = new char[ comment_length + 1 ];
+						bytes_read = read( archive_descriptor, comment, comment_length );
+						comment[ comment_length ] = '\0';
+						offset = position;
+					}
+					else
+					{
+						raise_title_getting_error( archive_descriptor );
+					}
+				}
+				else
+				{
+					raise_title_getting_error( archive_descriptor );
+				}
+			}
+			else
+			{
+				raise_title_getting_error( archive_descriptor );
+			}
+		}
+		else if( comment_flag == 'u' && bytes_read == sizeof( char ) )
+		{
+			offset = position;
+		}
+		else
+		{
+			raise_title_getting_error( archive_descriptor );
+		}
+
+		bool title_is_commpressed = false;
+		int title_size = 0;
+		// смещаемся на признак сжатия заголовка и размер заголовка
+		offset -= ( sizeof( bool ) + sizeof( int ) );
+
+		if( (position = lseek( archive_descriptor, offset, SEEK_SET )) != -1 )
+		{
+			// считываем размер заголовка и переменную-признак сжатия
+			bytes_read = 0;
+			bytes_read += read( archive_descriptor, &title_size, sizeof( int ) );
+			bytes_read += read( archive_descriptor, &title_is_commpressed, sizeof( bool ) );
+
+			if( bytes_read != sizeof( int ) + sizeof( bool ) )
+			{
+				raise_title_getting_error( archive_descriptor );
+			}
+		}
+		else
+		{
+			raise_title_getting_error( archive_descriptor );
+		}
+
+		int tn_count = title_size / sizeof( title_node );
+		title_node* title_elements = new title_node[ tn_count ];
+
+		if( title_size >= 0 && !title_is_commpressed )
+		{
+			// устанавливаем смещение в файле на начало заголовка
+			offset -= title_size;
+			
+			if( (position = lseek( archive_descriptor, offset, SEEK_SET )) != -1 )
+			{
+				// считываем заголовок
+				bytes_read = read( archive_descriptor, title_elements, title_size );
+				
+				if( bytes_read != title_size )
+				{
+					raise_title_getting_error( archive_descriptor );
+				}
+			}
+		}
+		else if( title_size >= 0 && title_is_commpressed )
+		{
+			// ЗАГЛУШКА ДЛЯ РАСЖАТИЯ ЗАГОЛОВКА
+		}
+		else
+		{
+			raise_title_getting_error( archive_descriptor );
+		}
+
+		close( archive_descriptor );
+		return CreateTitle( title_elements, tn_count, comment ); 
+	}
+	else
+	{
+		close( archive_descriptor );
+		throw archive_exception( "Title getting error. Read error." ); 
+	}
 }
 
-// ------------------------------------------------------------------------
+archive_title masher_archivator::CreateTitle( title_node* title_elements, int count, char* comment )
+{
+	archive_title title;
+
+	for( int i = 0; i < count; i ++ )
+	{
+		title.nodes.push_back( title_elements[ i ] );
+	}
+
+	title.comment = comment;
+	return title;
+}
+
+// ------------------------------------------------------------------------------------
+
+bool masher_archivator::CheckIntegrity( archive_options* options )
+{
+	struct stat* statistics = new struct stat;
+	size_f archive_length = 0;
+	size_f read_length = 0;
+	bool result = false;
+
+	int archive_descriptor = open( options -> target_archive_name, O_RDONLY );
+
+	if( archive_descriptor == -1 )
+	{
+		throw archive_exception( "Check integrity error." ); 
+	}
+	// CЧИТАЕМ ХЭШ ВСЕГО АРХИВА ( если успею )
+	if( lseek( archive_descriptor, - sizeof( size_f ), SEEK_END ) != -1 )
+	{
+		// МЕСТО ДЛЯ СЧИТЫВАНИЯ И ПРОВЕРКИ ХЭША ( если успею )
+		int bytes_read = read( archive_descriptor, &read_length, sizeof( size_f ) );
+
+		if( bytes_read != sizeof( size_f ) )
+		{
+			throw archive_exception( "Check integrity error." );
+		}
+
+		if( stat( options -> target_archive_name, statistics ) == 0 )
+		{
+			archive_length = statistics -> st_size;
+		}
+
+		if( read_length == archive_length )
+		{
+			result = true;
+		}
+	}
+
+	close( archive_descriptor );
+	delete statistics;
+	return result;
+}
+
+// ------------------------------------------------------------------------------------
 
 void masher_archivator::Archive(
 	char* target_archive_name, 
@@ -100,6 +303,7 @@ void masher_archivator::Archive(
 	total_size += WriteTitle( archive_descriptor, title, compress );
 	total_size += WriteComment( archive_descriptor, comment );
 	total_size += sizeof( size_f );
+	// ВЫЧИСЛЕНИЕ И ЗАПИСЬ ХЭШ СУММЫ
 	WriteTotalSize( archive_descriptor, total_size );
 	close( archive_descriptor );
 }
