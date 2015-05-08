@@ -25,7 +25,7 @@ void switcher_task::RunTask( archive_options* options )
 				try
 				{
 					_archivator.RunArchivation( options );
-					cout << "Archiving completed successfully" << endl;
+					cout << "Archiving completed successfully." << endl;
 				}
 				catch( archive_exception e )
 				{
@@ -47,7 +47,7 @@ void switcher_task::RunTask( archive_options* options )
 				{
 					if( !CheckTargetPath( options -> target_path ) )
 					{
-						cout << "Target path is invalid." << endl;
+						cout << "Target path is not exist." << endl;
 						cout << "Extracting archive in current directory? [Y/N]: ";
 						
 						char choise;
@@ -55,7 +55,6 @@ void switcher_task::RunTask( archive_options* options )
 
 						if( choise == 'Y' )
 						{
-							// target_path это константная строка, её нельзя удалить динамически
 							options -> target_path = nullptr;
 						}
 						else
@@ -67,7 +66,7 @@ void switcher_task::RunTask( archive_options* options )
 
 				try
 				{
-					_archivator.ExtractFiles( options );
+					_archivator.RunExtracting( options );
 				}
 				catch( archive_exception e )
 				{
@@ -273,5 +272,5 @@ void switcher_task::ShowHelp()
 void print_exception_information( archive_exception& e )
 {
 	cerr << e.GetMessage() << endl;
-	cerr << e.GetInnerException().GetMessage() << endl; 
+	cerr << e.GetInnerMessage() << endl; 
 }

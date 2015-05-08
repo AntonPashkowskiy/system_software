@@ -7,7 +7,7 @@ class archivator
 {
 public:
 	virtual void RunArchivation( archive_options* options ) = 0;
-	virtual void ExtractFiles( archive_options* options ) = 0;
+	virtual void RunExtracting( archive_options* options ) = 0;
 	virtual void RemoveFiles( archive_options* options ) = 0;
 	virtual archive_title GetTitle( archive_options* options ) = 0;
 	virtual bool CheckIntegrity( archive_options* options ) = 0;

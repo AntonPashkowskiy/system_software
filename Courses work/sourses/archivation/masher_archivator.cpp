@@ -1,4 +1,5 @@
 #include "masher_archivator.h"
+#include "CRC32.h"
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
@@ -9,7 +10,7 @@
 
 using namespace std;
 
-const int buffer_length = 10000;
+const int buffer_length = 8388608;
 
 void masher_archivator::RunArchivation( archive_options* options )
 {
@@ -36,18 +37,18 @@ void masher_archivator::RunArchivation( archive_options* options )
 	}
 	catch( archive_exception e )
 	{
-		throw archive_exception( "Run archivation error.", e );
+		throw archive_exception( "Run archivation error.", e.GetMessage() );
 	}
 }
 
-void masher_archivator::ExtractFiles( archive_options* options )
+void masher_archivator::RunExtracting( archive_options* options )
 {
-	throw archive_exception( "Extracting error." );
+	throw archive_exception( "Extraction error." );
 }
 
 void masher_archivator::RemoveFiles( archive_options* options )
 {
-	throw archive_exception( "Removing error." );
+	throw archive_exception( "Remove error." );
 }
 
 // ------------------------------------------------------------------------------------
@@ -56,7 +57,7 @@ void raise_title_getting_error( int descriptor )
 {
 	// закрываем архив и выбрасываем исключение.
 	close( descriptor );
-	throw archive_exception( "Title getting error. Read error." );
+	throw archive_exception( "Get title error. Read error." );
 }
 
 /*
@@ -75,12 +76,12 @@ archive_title masher_archivator::GetTitle( archive_options* options )
 
 		if( !is_integrite )
 		{
-			throw archive_exception( "Title getting error. Archive is damaged." );
+			throw archive_exception( "Get title error. Archive is damaged." );
 		}
 	}
 	catch( archive_exception e )
 	{
-		throw archive_exception( "Title getting error.", e );
+		throw archive_exception( "Get title error.", e.GetMessage() );
 	}
 
 	char comment_flag;
@@ -91,11 +92,11 @@ archive_title masher_archivator::GetTitle( archive_options* options )
 
 	if( archive_descriptor == -1 )
 	{
-		throw archive_exception( "Title getting error." );
+		throw archive_exception( "Get title error." );
 	}
 
-	// смещаемся на длинну файла и на флаг наличия комментария
-	int offset = -( sizeof( char ) + sizeof( size_f ) );
+	// смещаемся на записанную контрольную сумму, длинну файла, и признак наличия комментария 
+	int offset = -( sizeof( char ) + sizeof( size_f ) + sizeof( unsigned ) );
 	int position = lseek( archive_descriptor, offset, SEEK_END );
 	
 	if( position != -1 )
@@ -204,7 +205,7 @@ archive_title masher_archivator::GetTitle( archive_options* options )
 	else
 	{
 		close( archive_descriptor );
-		throw archive_exception( "Title getting error. Read error." ); 
+		throw archive_exception( "Get title error. Read error." ); 
 	}
 }
 
@@ -229,30 +230,36 @@ bool masher_archivator::CheckIntegrity( archive_options* options )
 	size_f archive_length = 0;
 	size_f read_length = 0;
 	bool result = false;
-
 	int archive_descriptor = open( options -> target_archive_name, O_RDONLY );
 
 	if( archive_descriptor == -1 )
 	{
 		throw archive_exception( "Check integrity error." ); 
 	}
-	// CЧИТАЕМ ХЭШ ВСЕГО АРХИВА ( если успею )
-	if( lseek( archive_descriptor, - sizeof( size_f ), SEEK_END ) != -1 )
-	{
-		// МЕСТО ДЛЯ СЧИТЫВАНИЯ И ПРОВЕРКИ ХЭША ( если успею )
-		int bytes_read = read( archive_descriptor, &read_length, sizeof( size_f ) );
 
-		if( bytes_read != sizeof( size_f ) )
+	unsigned rd_check_sum = 0;
+	// смещение на записанную клнтрольную сумму и на размер файла
+	int offset = - ( sizeof( unsigned ) + sizeof( size_f ) );
+	
+	if( lseek( archive_descriptor, offset, SEEK_END ) != -1 )
+	{
+		int bytes_read = read( archive_descriptor, &read_length, sizeof( size_f ) );
+		bytes_read += read( archive_descriptor, &rd_check_sum, sizeof( unsigned ) );
+
+		if( bytes_read != sizeof( size_f ) + sizeof( unsigned ) )
 		{
 			throw archive_exception( "Check integrity error." );
 		}
+
+		// cчитаем контрольную сумму файла без учёта контрольной суммы, записанной в конце. 
+		unsigned check_sum = CalculateCheckSum( archive_descriptor, read_length - sizeof( unsigned ) );
 
 		if( stat( options -> target_archive_name, statistics ) == 0 )
 		{
 			archive_length = statistics -> st_size;
 		}
 
-		if( read_length == archive_length )
+		if( read_length == archive_length && check_sum == rd_check_sum )
 		{
 			result = true;
 		}
@@ -277,7 +284,7 @@ void masher_archivator::Archive(
 	
 	if( archive_descriptor == -1 )
 	{
-		throw new archive_exception( "The archive file is not created." );
+		throw archive_exception( "The archive file is not created." );
 	}
 
 	title_node node;
@@ -290,7 +297,7 @@ void masher_archivator::Archive(
 
 	for( unsigned int i = 0; i < files.size(); i++ )
 	{
-		node = WriteFileInArchive( archive_descriptor, files[ i ], compress );
+		node = WriteFileToArchive( archive_descriptor, files[ i ], compress );
 		cout << "File '" << node.file_name << "' is packed." << endl;
 		title.push_back( node );
 	}
@@ -303,17 +310,19 @@ void masher_archivator::Archive(
 	total_size += WriteTitle( archive_descriptor, title, compress );
 	total_size += WriteComment( archive_descriptor, comment );
 	total_size += sizeof( size_f );
-	// ВЫЧИСЛЕНИЕ И ЗАПИСЬ ХЭШ СУММЫ
+	total_size += sizeof( unsigned );
 	WriteTotalSize( archive_descriptor, total_size );
+	unsigned check_sum = CalculateCheckSum( archive_descriptor, total_size - sizeof( unsigned ) );
+	WriteCheckSum( archive_descriptor, check_sum );
 	close( archive_descriptor );
 }
 
 // функция получения имени архива без расширения
 void get_archive_name( char* name, char* full_name )
 {
-	int length = strlen( full_name );
+	int name_length = strlen( full_name );
 
-	for( int i = 0; i < length; i++ )
+	for( int i = 0; i < name_length; i++ )
 	{
 		if( full_name[ i ] == '.' && strcmp( full_name + i, ".msr" ) == 0 )
 		{
@@ -366,7 +375,7 @@ int masher_archivator::CreateArchiveFile( char* target_archive_name )
 		postfix_number ++;
 	}
 
-	int archive_descriptor = open( archive_name, O_CREAT | O_WRONLY, 
+	int archive_descriptor = open( archive_name, O_CREAT | O_RDWR, 
 		S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH | S_IWOTH );
 	
 	delete archive_name;
@@ -400,7 +409,7 @@ void create_title_node(
 	title_n.tree_id = fs_object.tree_id;
 }
 
-title_node masher_archivator::WriteFileInArchive( int archive_fd, file_system_object object, bool compress )
+title_node masher_archivator::WriteFileToArchive( int archive_fd, file_system_object object, bool compress )
 {
 	title_node title_n;
 
@@ -412,9 +421,9 @@ title_node masher_archivator::WriteFileInArchive( int archive_fd, file_system_ob
 	}
 
 	int file_descriptor = open( object.full_path, O_RDONLY );
-	char* buffer = new char[ buffer_length ];
 	size_f file_length = 0;
 	char compression_type = 'n';
+	char* buffer = new char[ buffer_length ];
 	
 	if( compress )
 	{
@@ -433,9 +442,10 @@ title_node masher_archivator::WriteFileInArchive( int archive_fd, file_system_ob
 
 			if( bytes_written != bytes_read )
 			{
+				delete buffer;
 				close( file_descriptor );
 				close( archive_fd );
-				throw archive_exception( "Error writing archive" );
+				throw archive_exception( "Archive write error." );
 			}
 
 			if( bytes_read < buffer_length )
@@ -525,4 +535,63 @@ int masher_archivator::WriteComment( int archive_fd, char* comment )
 void masher_archivator::WriteTotalSize( int archive_fd, size_f total_size )
 {
 	write( archive_fd, &total_size, sizeof( size_f ) );
+}
+
+unsigned masher_archivator::CalculateCheckSum( int descriptor, size_f file_size )
+{
+	int position = 0;
+
+	if( (position = lseek( descriptor, 0, SEEK_SET )) == -1 )
+	{
+		close( descriptor );
+		throw archive_exception( "Error calculating the check sum." );
+	}
+
+	char *buffer = new char[ buffer_length ];
+	int bytes_read = 0;
+	size_f checked_size = 0;
+	bool quit = false;
+	CRC32 crc;
+
+	while( true )
+	{
+		bytes_read = read( descriptor, buffer, buffer_length );
+
+		if( bytes_read == -1 )
+		{
+			throw archive_exception( "Error calculating the check sum." );
+		}
+
+		if( (checked_size + bytes_read) >= file_size )
+		{
+			bytes_read = file_size - checked_size;
+			quit = true;
+			break;
+		}
+
+		if( bytes_read > 0 )
+		{
+			// считаем контрольную сумму
+			crc.ProcessBytes( buffer, bytes_read );
+			checked_size += bytes_read;
+		}
+
+		if( quit )
+		{ 
+			break;
+		}
+	}
+
+	delete buffer;
+	return crc.GetCheckSumm();
+}
+
+void masher_archivator::WriteCheckSum( int archive_fd, unsigned check_sum )
+{
+	int bytes_written = write( archive_fd, &check_sum, sizeof( unsigned ) );
+
+	if( bytes_written != sizeof( unsigned ) )
+	{
+		throw archive_exception( "Write error." );
+	}
 }

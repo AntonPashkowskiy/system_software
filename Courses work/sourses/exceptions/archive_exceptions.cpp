@@ -6,10 +6,10 @@ archive_exception::archive_exception( const char* message )
 	this -> message = message;
 }
 
-archive_exception::archive_exception( const char* message, archive_exception& inner_exception )
+archive_exception::archive_exception( const char* message, const char* inner_message )
 {
 	this -> message = message;
-	*(this -> inner_exception) = inner_exception;
+	this -> inner_message = inner_message;
 }
 
 const char* archive_exception::GetMessage()
@@ -17,12 +17,7 @@ const char* archive_exception::GetMessage()
 	return message;
 }
 
-archive_exception archive_exception::GetInnerException()
+const char* archive_exception::GetInnerMessage()
 {
-	if( inner_exception != nullptr )
-	{
-		return *inner_exception;
-	}
-
-	return archive_exception( "" );
+	return inner_message;
 }

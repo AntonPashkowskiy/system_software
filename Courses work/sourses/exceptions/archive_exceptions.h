@@ -5,12 +5,12 @@ class archive_exception
 {
 private:
 	const char* message = nullptr;
-	archive_exception* inner_exception = nullptr;
+	const char* inner_message = nullptr;
 public:
 	archive_exception( const char* message );
-	archive_exception( const char* message, archive_exception& inner_exception );
+	archive_exception( const char* message, const char* sourse );
 	virtual const char* GetMessage();
-	virtual archive_exception GetInnerException();
+	virtual const char* GetInnerMessage();
 };
 
 #endif
