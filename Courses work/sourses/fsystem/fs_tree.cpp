@@ -10,7 +10,7 @@
 
 using namespace std;
 
-files_tree::files_tree( char* root_path, bool with_hidden, int tree_id )
+file_tree::file_tree( char* root_path, bool with_hidden, int tree_id )
 {
 	this -> tree_id = tree_id;
 	// нужен для уникальной идентификации всех узлов
@@ -20,7 +20,7 @@ files_tree::files_tree( char* root_path, bool with_hidden, int tree_id )
 	Initialize( root_path, nullptr, root_id, 0, root_node );
 }
 
-files_tree::files_tree( vector<file_system_object>& nodes )
+file_tree::file_tree( vector<file_system_object>& nodes )
 {
 	if( nodes.size() != 0 ) 
 	{
@@ -46,12 +46,12 @@ files_tree::files_tree( vector<file_system_object>& nodes )
 	}
 }
 
-files_tree::~files_tree()
+file_tree::~file_tree()
 {
 	Dispose( root_node );
 }
 
-void files_tree::GetAllFiles( char* path_to_directory, vector<char*>& buffer, bool add_hidden )
+void file_tree::GetAllFiles( char* path_to_directory, vector<char*>& buffer, bool add_hidden )
 {
 	DIR* directory = opendir( path_to_directory );
 	char* file_name = nullptr;
@@ -89,7 +89,7 @@ void files_tree::GetAllFiles( char* path_to_directory, vector<char*>& buffer, bo
 	closedir( directory );
 }
 
-char* files_tree::CreatePath( char* root_path, char* file_path )
+char* file_tree::CreatePath( char* root_path, char* file_path )
 {
 	if( root_path == nullptr || file_path == nullptr )
 	{
@@ -106,7 +106,7 @@ char* files_tree::CreatePath( char* root_path, char* file_path )
 	return path;
 }
 
-char* files_tree::GetFileName( char* path )
+char* file_tree::GetFileName( char* path )
 {
 	if( path == nullptr )
 	{
@@ -133,7 +133,7 @@ char* files_tree::GetFileName( char* path )
 	return name;
 }
 
-void files_tree::Initialize( char* full_path, char* file_name, int& id, int parent_id, files_tree_node& node )
+void file_tree::Initialize( char* full_path, char* file_name, int& id, int parent_id, files_tree_node& node )
 {
 	if( full_path == nullptr )
 	{
@@ -194,7 +194,7 @@ void files_tree::Initialize( char* full_path, char* file_name, int& id, int pare
 	}
 }
 
-void files_tree::Dispose( files_tree_node& node )
+void file_tree::Dispose( files_tree_node& node )
 {
 	if( node.file_name != nullptr && node.id != 0 )
 	{
@@ -216,7 +216,7 @@ void files_tree::Dispose( files_tree_node& node )
 	node.child_hidden_nodes.clear();
 }
 
-void files_tree::GetNodes( vector<file_system_object>& nodes )
+void file_tree::GetNodes( vector<file_system_object>& nodes )
 {
 	file_system_object object;
 	// записываем информацию о корне
@@ -226,7 +226,7 @@ void files_tree::GetNodes( vector<file_system_object>& nodes )
 	GetSubnodes( root_node, nodes, this -> with_hidden );
 }
 
-void files_tree::GetSubnodes( files_tree_node node, vector<file_system_object>& nodes, bool add_hidden )
+void file_tree::GetSubnodes( files_tree_node node, vector<file_system_object>& nodes, bool add_hidden )
 {
 	file_system_object object;
 
@@ -248,7 +248,7 @@ void files_tree::GetSubnodes( files_tree_node node, vector<file_system_object>& 
 	}
 }
 
-void files_tree::MapNode( files_tree_node& node, file_system_object& object )
+void file_tree::MapNode( files_tree_node& node, file_system_object& object )
 {
 	object.full_path = node.full_path;
 	object.file_name = node.file_name;
@@ -258,7 +258,7 @@ void files_tree::MapNode( files_tree_node& node, file_system_object& object )
 	object.tree_id = this -> tree_id;
 }
 
-void files_tree::MapObject( file_system_object& object, files_tree_node& node )
+void file_tree::MapObject( file_system_object& object, files_tree_node& node )
 {
 	int length = strlen( object.file_name );
 	node.file_name = new char[ length + 1 ];
@@ -268,7 +268,7 @@ void files_tree::MapObject( file_system_object& object, files_tree_node& node )
 	node.parent_id = object.parent_id;
 }
 
-void files_tree::Recreate( vector<file_system_object>& nodes, files_tree_node& parent_node )
+void file_tree::Recreate( vector<file_system_object>& nodes, files_tree_node& parent_node )
 {
 	for ( unsigned int i = 0; i < nodes.size(); i++ )
 	{
@@ -288,22 +288,12 @@ void files_tree::Recreate( vector<file_system_object>& nodes, files_tree_node& p
 	}
 }
 
-void files_tree::CreateFilesTree( const char* target_path )
+void file_tree::CreateFilesTree()
 {
-	if( target_path != nullptr )
-	{
-		if( chdir( target_path ) == 0 )
-		{
-			CreateFiles( root_node );
-		}
-	}
-	else
-	{
-		CreateFiles( root_node );
-	}
+	CreateFiles( root_node );
 }
 
-void files_tree::CreateFiles( files_tree_node& node )
+void file_tree::CreateFiles( files_tree_node& node )
 {
 	if( node.type == DIRECTORY )
 	{

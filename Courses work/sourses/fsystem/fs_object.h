@@ -4,8 +4,8 @@
 
 struct file_system_object
 {
-	char* full_path;
-	char* file_name;
+	char* full_path = nullptr;
+	char* file_name = nullptr;
 	file_type type;
 	int object_id;
 	int parent_id;

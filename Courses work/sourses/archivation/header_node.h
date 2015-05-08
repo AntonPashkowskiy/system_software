@@ -1,9 +1,9 @@
-#if !defined( ARCHIVE_TITLE_NODE )
-#define ARCHIVE_TITLE_NODE
+#if !defined( ARCHIVE_HEADER_NODE )
+#define ARCHIVE_HEADER_NODE
 
 const int max_name_length = 255;
 
-struct title_node
+struct header_node
 {
 	char file_name[ max_name_length ];
 	unsigned long long file_length = 0;

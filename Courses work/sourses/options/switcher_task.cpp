@@ -100,14 +100,14 @@ void switcher_task::RunTask( archive_options* options )
 			
 			break;
 
-		case VIEW_TITLE:
+		case VIEW_HEADER:
 
 			try
 			{
 				if( CheckArchiveExisting( options ) )
 				{
-					archive_title title = _archivator.GetTitle( options );;
-					PrintTitle( title );
+					archive_header header = _archivator.GetHeader( options );
+					PrintHeader( header );
 				}
 				else
 				{
@@ -225,21 +225,19 @@ bool switcher_task::CheckTargetPath( char* path )
 	return false;
 }
 
-void switcher_task::PrintTitle( archive_title title )
+void switcher_task::PrintHeader( archive_header header )
 {
-	cout << endl;
-
-	if( title.comment != nullptr )
+	if( header.comment != nullptr )
 	{
-		cout << "Comment: " << title.comment << endl;
+		cout << "Comment: " << header.comment << endl;
 	}
 
 	cout << "----------------------------------------------------------------------------" << endl;
 	
-	for( unsigned int i = 0; i < title.nodes.size(); i++ )
+	for( unsigned int i = 0; i < header.nodes.size(); i++ )
 	{
-		cout << setw( 60 ) << left << title.nodes[ i ].file_name;
-		cout << ( title.nodes[ i ].file_type == 'd' ? " : directory" : " : regular file" ) << endl;
+		cout << setw( 60 ) << left << header.nodes[ i ].file_name;
+		cout << ( header.nodes[ i ].file_type == 'd' ? " : directory" : " : regular file" ) << endl;
 	}
 
 	cout << "----------------------------------------------------------------------------" << endl;
@@ -254,7 +252,7 @@ void switcher_task::ShowHelp()
 		 << "flag: -crc    create archive with compressing." << endl
 		 << "flag: -rmf    remove files from archive." << endl
 		 << "flag: -ext    extract files from archive." << endl
-		 << "flag: -vt     view title." << endl
+		 << "flag: -vh     view header." << endl
 		 << "flag: -cmt    add а comment to archive."
 		 << "flag: -check  check archive integrity." << endl
 		 << "flag: -hd     include hidden files.\n" << endl
@@ -262,7 +260,7 @@ void switcher_task::ShowHelp()
 		 << "example: masher -cr archive.msr somedirectory somefiles" << endl
 		 << "example: masher -crc archive.msr somedirectory somefiles" << endl
 		 << "example: masher -rmf archive.msr filenames" << endl
-		 << "example: masher -vt archive.msr" << endl
+		 << "example: masher -vh archive.msr" << endl
 		 << "example: masher -ext archive.msr target_directory (current by default)" << endl
 		 << "example: masher -crc archive.msr somedirectory somefiles -cmt \"Comment\"" << endl
 		 << "example: masher -check archive.msr" << endl

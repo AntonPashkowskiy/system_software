@@ -8,7 +8,7 @@
 #include "../exceptions/archive_exceptions.h"
 #include "../archivation/archivator.h"
 #include "../archivation/masher_archivator.h"
-#include "../archivation/title.h"
+#include "../archivation/header.h"
 
 using namespace std;
 
@@ -30,7 +30,7 @@ private:
 	// вывод справки
 	static void ShowHelp();
 	// вывод заголовка архива
-	static void PrintTitle( archive_title title );
+	static void PrintHeader( archive_header header );
 public:
 	static void RunTask( archive_options* options );
 };

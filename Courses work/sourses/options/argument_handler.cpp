@@ -167,7 +167,7 @@ archive_options* argument_handler::ProcessArguments( int argc, char** argv )
 				}
 
 		
-			case VIEW_TITLE:
+			case VIEW_HEADER:
 
 				if( argc == 3 )
 				{
@@ -228,7 +228,7 @@ Operation argument_handler::GetFlag( char* flag )
 
 	if( strcmp( flag, "--help" ) == 0 ) return HELP;
 	if( strcmp( flag, "-crc" ) == 0 )   return CREATE_WITH_COMPRESSING;
-	if( strcmp( flag, "-vt" ) == 0 )    return VIEW_TITLE;
+	if( strcmp( flag, "-vh" ) == 0 )    return VIEW_HEADER;
 	if( strcmp( flag, "-cr" ) == 0 )    return CREATE_WITHOUT_COMPRESSING;
 	if( strcmp( flag, "-ext" ) == 0 )   return EXTRACTING;
 	if( strcmp( flag, "-rmf" ) == 0 )   return REMOVING;

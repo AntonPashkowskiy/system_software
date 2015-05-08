@@ -15,13 +15,13 @@ const int buffer_length = 8388608;
 void masher_archivator::RunArchivation( archive_options* options )
 {
 	vector<file_system_object> target_files;
-	vector<files_tree*> trees_vector;
+	vector<file_tree*> file_trees;
 
 	for ( unsigned int i = 0; i < (options -> paths).size(); i++ )
 	{
-		files_tree* tree = new files_tree( (options -> paths)[ i ], options -> include_hidden_files, i );
+		file_tree* tree = new file_tree( (options -> paths)[ i ], options -> include_hidden_files, i );
 		tree -> GetNodes( target_files );
-		trees_vector.push_back( tree );
+		file_trees.push_back( tree );
 	}
 
 	try
@@ -39,11 +39,85 @@ void masher_archivator::RunArchivation( archive_options* options )
 	{
 		throw archive_exception( "Run archivation error.", e.GetMessage() );
 	}
+
+	DestroyTrees( file_trees );
 }
 
 void masher_archivator::RunExtracting( archive_options* options )
 {
-	throw archive_exception( "Extraction error." );
+	archive_header header;
+
+	try
+	{
+		header = GetHeader( options );
+	}
+	catch( archive_exception e )
+	{
+		throw archive_exception( "Error extraction.", e.GetMessage() );
+	}
+
+	vector<file_system_object> files;
+	vector<file_system_object> tree_nodes;
+	vector<file_tree*> file_trees;
+	file_tree* tree = nullptr;
+	char* name = nullptr;
+
+	// делаем текущей директорию указанную в опциях
+	if( options -> target_path != nullptr )
+	{
+		if( chdir( options -> target_path ) != 0 )
+		{
+			throw archive_exception( "Error extraction." );
+		}
+	}
+	else
+	{
+		int archive_name_length = strlen( options -> target_archive_name );
+		name = new char[ archive_name_length ];
+		GetArchiveName( name, options -> target_archive_name );
+		int descriptor = mkdir( name, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH | S_IWOTH );
+
+		if( descriptor == -1 || fchdir( descriptor ) != 0 )
+		{
+			throw archive_exception( "Error extraction." );
+		}
+
+		delete name;
+	}
+
+	GetFilesFromHeader( header, files );
+	int trees_count = TreesCount( files );
+	unsigned int j = 0;
+
+	for( int i = 0; i < trees_count; i++ )
+	{
+		while( true )
+		{
+			if( files[ j ].tree_id == i && j < files.size() )
+			{
+				tree_nodes.push_back( files[ j ] );
+				j++;
+			}
+			else
+			{
+				break;
+			}
+		}
+	
+		tree = new file_tree( tree_nodes );
+		tree -> CreateFilesTree();
+		file_trees.push_back( tree );
+		tree_nodes.clear();
+	}
+
+	for( int i = 0; i < trees_count; i++ )
+	{
+		file_trees[ i ] -> GetNodes( tree_nodes );
+	}
+
+	Extract( tree_nodes );
+	DestroyTrees( file_trees );
+	FreeFileObjects( files );
 }
 
 void masher_archivator::RemoveFiles( archive_options* options )
@@ -53,11 +127,11 @@ void masher_archivator::RemoveFiles( archive_options* options )
 
 // ------------------------------------------------------------------------------------
 
-void raise_title_getting_error( int descriptor )
+void raise_header_getting_error( int descriptor )
 {
 	// закрываем архив и выбрасываем исключение.
 	close( descriptor );
-	throw archive_exception( "Get title error. Read error." );
+	throw archive_exception( "Failed to get the header. Read error." );
 }
 
 /*
@@ -66,7 +140,7 @@ void raise_title_getting_error( int descriptor )
 	Если этого не делать - это чревато абсолютной билибердой у пользователя. 
 */
 
-archive_title masher_archivator::GetTitle( archive_options* options )
+archive_header masher_archivator::GetHeader( archive_options* options )
 {
 	// проверяем целостность архива
 	// до этого момента нам известно только то что файл архива существует
@@ -76,12 +150,12 @@ archive_title masher_archivator::GetTitle( archive_options* options )
 
 		if( !is_integrite )
 		{
-			throw archive_exception( "Get title error. Archive is damaged." );
+			throw archive_exception( "Failed to get the header. Archive is damaged." );
 		}
 	}
 	catch( archive_exception e )
 	{
-		throw archive_exception( "Get title error.", e.GetMessage() );
+		throw archive_exception( "Failed to get the header.", e.GetMessage() );
 	}
 
 	char comment_flag;
@@ -92,7 +166,7 @@ archive_title masher_archivator::GetTitle( archive_options* options )
 
 	if( archive_descriptor == -1 )
 	{
-		throw archive_exception( "Get title error." );
+		throw archive_exception( "Get header error." );
 	}
 
 	// смещаемся на записанную контрольную сумму, длинну файла, и признак наличия комментария 
@@ -127,17 +201,17 @@ archive_title masher_archivator::GetTitle( archive_options* options )
 					}
 					else
 					{
-						raise_title_getting_error( archive_descriptor );
+						raise_header_getting_error( archive_descriptor );
 					}
 				}
 				else
 				{
-					raise_title_getting_error( archive_descriptor );
+					raise_header_getting_error( archive_descriptor );
 				}
 			}
 			else
 			{
-				raise_title_getting_error( archive_descriptor );
+				raise_header_getting_error( archive_descriptor );
 			}
 		}
 		else if( comment_flag == 'u' && bytes_read == sizeof( char ) )
@@ -146,11 +220,11 @@ archive_title masher_archivator::GetTitle( archive_options* options )
 		}
 		else
 		{
-			raise_title_getting_error( archive_descriptor );
+			raise_header_getting_error( archive_descriptor );
 		}
 
-		bool title_is_commpressed = false;
-		int title_size = 0;
+		bool header_is_commpressed = false;
+		int header_size = 0;
 		// смещаемся на признак сжатия заголовка и размер заголовка
 		offset -= ( sizeof( bool ) + sizeof( int ) );
 
@@ -158,68 +232,68 @@ archive_title masher_archivator::GetTitle( archive_options* options )
 		{
 			// считываем размер заголовка и переменную-признак сжатия
 			bytes_read = 0;
-			bytes_read += read( archive_descriptor, &title_size, sizeof( int ) );
-			bytes_read += read( archive_descriptor, &title_is_commpressed, sizeof( bool ) );
+			bytes_read += read( archive_descriptor, &header_size, sizeof( int ) );
+			bytes_read += read( archive_descriptor, &header_is_commpressed, sizeof( bool ) );
 
 			if( bytes_read != sizeof( int ) + sizeof( bool ) )
 			{
-				raise_title_getting_error( archive_descriptor );
+				raise_header_getting_error( archive_descriptor );
 			}
 		}
 		else
 		{
-			raise_title_getting_error( archive_descriptor );
+			raise_header_getting_error( archive_descriptor );
 		}
 
-		int tn_count = title_size / sizeof( title_node );
-		title_node* title_elements = new title_node[ tn_count ];
+		int hn_count = header_size / sizeof( header_node );
+		header_node* header_elements = new header_node[ hn_count ];
 
-		if( title_size >= 0 && !title_is_commpressed )
+		if( header_size >= 0 && !header_is_commpressed )
 		{
 			// устанавливаем смещение в файле на начало заголовка
-			offset -= title_size;
+			offset -= header_size;
 			
 			if( (position = lseek( archive_descriptor, offset, SEEK_SET )) != -1 )
 			{
 				// считываем заголовок
-				bytes_read = read( archive_descriptor, title_elements, title_size );
+				bytes_read = read( archive_descriptor, header_elements, header_size );
 				
-				if( bytes_read != title_size )
+				if( bytes_read != header_size )
 				{
-					raise_title_getting_error( archive_descriptor );
+					raise_header_getting_error( archive_descriptor );
 				}
 			}
 		}
-		else if( title_size >= 0 && title_is_commpressed )
+		else if( header_size >= 0 && header_is_commpressed )
 		{
 			// ЗАГЛУШКА ДЛЯ РАСЖАТИЯ ЗАГОЛОВКА
 		}
 		else
 		{
-			raise_title_getting_error( archive_descriptor );
+			raise_header_getting_error( archive_descriptor );
 		}
 
 		close( archive_descriptor );
-		return CreateTitle( title_elements, tn_count, comment ); 
+		return CreateHeader( header_elements, hn_count, comment ); 
 	}
 	else
 	{
 		close( archive_descriptor );
-		throw archive_exception( "Get title error. Read error." ); 
+		throw archive_exception( "Failed to get the header. Read error." ); 
 	}
 }
 
-archive_title masher_archivator::CreateTitle( title_node* title_elements, int count, char* comment )
+archive_header masher_archivator::CreateHeader( header_node* header_elements, int count, char* comment )
 {
-	archive_title title;
+	archive_header header;
 
 	for( int i = 0; i < count; i ++ )
 	{
-		title.nodes.push_back( title_elements[ i ] );
+		header.nodes.push_back( header_elements[ i ] );
 	}
 
-	title.comment = comment;
-	return title;
+	header.comment = comment;
+	return header;
 }
 
 // ------------------------------------------------------------------------------------
@@ -234,7 +308,7 @@ bool masher_archivator::CheckIntegrity( archive_options* options )
 
 	if( archive_descriptor == -1 )
 	{
-		throw archive_exception( "Check integrity error." ); 
+		throw archive_exception( "Error integrity check." ); 
 	}
 
 	unsigned rd_check_sum = 0;
@@ -248,7 +322,7 @@ bool masher_archivator::CheckIntegrity( archive_options* options )
 
 		if( bytes_read != sizeof( size_f ) + sizeof( unsigned ) )
 		{
-			throw archive_exception( "Check integrity error." );
+			throw archive_exception( "Error integrity check." );
 		}
 
 		// cчитаем контрольную сумму файла без учёта контрольной суммы, записанной в конце. 
@@ -287,8 +361,8 @@ void masher_archivator::Archive(
 		throw archive_exception( "The archive file is not created." );
 	}
 
-	title_node node;
-	vector<title_node> title;
+	header_node node;
+	vector<header_node> header_nodes;
 	size_f total_size = 0;
 	
 	// проверяем право на чтение архивируемых файлов 
@@ -299,15 +373,15 @@ void masher_archivator::Archive(
 	{
 		node = WriteFileToArchive( archive_descriptor, files[ i ], compress );
 		cout << "File '" << node.file_name << "' is packed." << endl;
-		title.push_back( node );
+		header_nodes.push_back( node );
 	}
 
-	for( unsigned int i = 0; i < title.size(); i++ )
+	for( unsigned int i = 0; i < header_nodes.size(); i++ )
 	{
-		total_size += title[ i ].file_length;
+		total_size += header_nodes[ i ].file_length;
 	}
 
-	total_size += WriteTitle( archive_descriptor, title, compress );
+	total_size += WriteHeader( archive_descriptor, header_nodes, compress );
 	total_size += WriteComment( archive_descriptor, comment );
 	total_size += sizeof( size_f );
 	total_size += sizeof( unsigned );
@@ -317,8 +391,7 @@ void masher_archivator::Archive(
 	close( archive_descriptor );
 }
 
-// функция получения имени архива без расширения
-void get_archive_name( char* name, char* full_name )
+void masher_archivator::GetArchiveName( char* name, char* full_name )
 {
 	int name_length = strlen( full_name );
 
@@ -337,15 +410,13 @@ void get_archive_name( char* name, char* full_name )
 int masher_archivator::CreateArchiveFile( char* target_archive_name )
 {
 	int postfix_number = 0;
+	int archive_name_length = strlen( target_archive_name );
 	char* archive_name = nullptr;
 	char postfix[ 3 ];
 	// имя архива без расширения
-	// max_name_length определён в title_node.h и равен 255
-	char name[ max_name_length ] = { '\0' };
-
-	int length = strlen( target_archive_name );
+	char name[ archive_name_length ];
 	// длинна имени, 3 символа постфикса и \0
-	archive_name = new char[ length + 4 ];
+	archive_name = new char[ archive_name_length + 4 ];
 	strcpy( archive_name, target_archive_name );
 
 	while( true )
@@ -359,7 +430,7 @@ int masher_archivator::CreateArchiveFile( char* target_archive_name )
 
 			if( strlen( name ) == 0 )
 			{
-				get_archive_name( name, target_archive_name );
+				GetArchiveName( name, target_archive_name );
 			}
 
 			strcpy( archive_name, name );
@@ -394,30 +465,30 @@ void masher_archivator::CheckReadAccess( vector<file_system_object> files )
 	}
 }
 
-void create_title_node( 
+void masher_archivator::CreateHeaderNode( 
 	file_system_object& fs_object, 
-	title_node& title_n, 
+	header_node& header_n, 
 	size_f file_length, 
 	char compression_type )
 {
-	strcpy( title_n.file_name, fs_object.file_name );
-	title_n.file_type = fs_object.type == DIRECTORY ? 'd' : 'r';
-	title_n.compression_type = compression_type;
-	title_n.file_length = file_length;
-	title_n.file_id = fs_object.object_id;
-	title_n.file_parent_id = fs_object.parent_id;
-	title_n.tree_id = fs_object.tree_id;
+	strcpy( header_n.file_name, fs_object.file_name );
+	header_n.file_type = fs_object.type == DIRECTORY ? 'd' : 'r';
+	header_n.compression_type = compression_type;
+	header_n.file_length = file_length;
+	header_n.file_id = fs_object.object_id;
+	header_n.file_parent_id = fs_object.parent_id;
+	header_n.tree_id = fs_object.tree_id;
 }
 
-title_node masher_archivator::WriteFileToArchive( int archive_fd, file_system_object object, bool compress )
+header_node masher_archivator::WriteFileToArchive( int archive_fd, file_system_object object, bool compress )
 {
-	title_node title_n;
+	header_node header_n;
 
 	if( object.type == DIRECTORY )
 	{
 		// тип сжатия 'n' означает не сжатый файл
-		create_title_node( object, title_n, 0, 'n' );
-		return title_n;
+		CreateHeaderNode( object, header_n, 0, 'n' );
+		return header_n;
 	}
 
 	int file_descriptor = open( object.full_path, O_RDONLY );
@@ -455,15 +526,15 @@ title_node masher_archivator::WriteFileToArchive( int archive_fd, file_system_ob
 		}
 	}
 
-	create_title_node( object, title_n, file_length, compression_type );
+	CreateHeaderNode( object, header_n, file_length, compression_type );
 	close( file_descriptor );
 	delete buffer;
-	return title_n;
+	return header_n;
 }
 
-int masher_archivator::WriteTitle( int archive_fd, vector<title_node> title, bool compress )
+int masher_archivator::WriteHeader( int archive_fd, vector<header_node> header, bool compress )
 {
-	int title_size = 0;
+	int header_size = 0;
 	unsigned int bytes_written = 0;	
 
 	if( compress )
@@ -472,31 +543,31 @@ int masher_archivator::WriteTitle( int archive_fd, vector<title_node> title, boo
 	}
 	else
 	{
-		unsigned int nodes_count = title.size();
-		title_node* data = title.data();
+		unsigned int nodes_count = header.size();
+		header_node* data = header.data();
 
-		bytes_written = write( archive_fd, data, nodes_count * sizeof( title_node ) );
-		title_size += bytes_written;
+		bytes_written = write( archive_fd, data, nodes_count * sizeof( header_node ) );
+		header_size += bytes_written;
 		
-		if( bytes_written != nodes_count * sizeof( title_node ) )
+		if( bytes_written != nodes_count * sizeof( header_node ) )
 		{
 			close( archive_fd );
-			throw archive_exception( "Error writing archive. Title damaged." );
+			throw archive_exception( "Error writing archive. Header damaged." );
 		}	
 	}
 	
 	// записываем размер заголовка
-	bytes_written = write( archive_fd, &title_size, sizeof( int ) );
+	bytes_written = write( archive_fd, &header_size, sizeof( int ) );
 	bytes_written += write( archive_fd, &compress, sizeof( bool ) );
 
 	if( bytes_written != (sizeof( int ) + sizeof( bool )) )
 	{
 		close( archive_fd );
-		throw archive_exception( "Error writing archive. Title damaged." );
+		throw archive_exception( "Error writing archive. header damaged." );
 	}
 
-	title_size += bytes_written;
-	return title_size;
+	header_size += bytes_written;
+	return header_size;
 }
 
 int masher_archivator::WriteComment( int archive_fd, char* comment )
@@ -593,5 +664,78 @@ void masher_archivator::WriteCheckSum( int archive_fd, unsigned check_sum )
 	if( bytes_written != sizeof( unsigned ) )
 	{
 		throw archive_exception( "Write error." );
+	}
+}
+
+void masher_archivator::DestroyTrees( vector<file_tree*>& trees )
+{
+	for( unsigned int i = 0; i < trees.size(); i++ )
+	{
+		delete trees[ i ];
+	}
+}
+
+//------------------------------------------------------------------------------------
+
+void masher_archivator::GetFilesFromHeader( archive_header& header, vector<file_system_object>& files )
+{
+	file_system_object object;
+
+	for( unsigned int i = 0; i < header.nodes.size(); i++ )
+	{
+		object = CreateFileObject( header.nodes[ i ] );
+		files.push_back( object );
+	}
+}
+
+file_system_object masher_archivator::CreateFileObject( header_node& node )
+{
+	file_system_object object;
+
+	int file_name_length = strlen( node.file_name );
+	object.file_name = new char[ file_name_length + 1 ];
+	strcpy( object.file_name, node.file_name );
+
+	object.type = node.file_type == 'd' ? DIRECTORY : REGULAR;
+	object.object_id = node.file_id;
+	object.parent_id = node.file_parent_id;
+	object.tree_id = node.tree_id;
+
+	return object;
+}
+
+
+int masher_archivator::TreesCount( vector<file_system_object>& files )
+{
+	int count = 0;
+	int current_tree_id = -1;
+
+	for( unsigned int i = 0; i < files.size(); i++ )
+	{
+		if( files[ i ].tree_id != current_tree_id )
+		{
+			count ++;
+			current_tree_id = files[ i ].tree_id;
+		}
+	}
+
+	return count;
+}
+
+void masher_archivator::FreeFileObjects( vector<file_system_object>& files )
+{
+	for( unsigned int i = 0; i < files.size(); i++ )
+	{
+		delete files[ i ].file_name;
+	}
+
+	files.clear();
+}
+
+void masher_archivator::Extract( vector<file_system_object>& tree_nodes )
+{
+	for( unsigned int i = 0; i < tree_nodes.size(); i++ )
+	{
+		cout << tree_nodes[ i ].full_path << endl;
 	}
 }

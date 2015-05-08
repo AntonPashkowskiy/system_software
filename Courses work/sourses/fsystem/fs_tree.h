@@ -1,11 +1,11 @@
-#if !defined( FILES_TREE )
-#define FILES_TREE
+#if !defined( FILE_TREE )
+#define FILE_TREE
 #include "fs_tree_node.h"
 #include "fs_object.h"
 
 using namespace std;
 
-class files_tree
+class file_tree
 {
 private:
 	int tree_id = 0;
@@ -13,7 +13,7 @@ private:
 	// добавлять ли скрытые файлы
 	bool with_hidden = false;
 	// запрещение конструктора по умолчанию и конструктора копирования
-	files_tree();
+	file_tree();
 	void GetAllFiles( char* path_to_directory, vector<char*>& buffer, bool add_hidden );
 	// рекурсивный метод инициализации дерева
 	void Initialize( char* full_path, char* file_name, int& id, int parent_id, files_tree_node& node );
@@ -34,12 +34,12 @@ private:
 	// рекурсивное создание файлов и папок на диске
 	void CreateFiles( files_tree_node& node );
 public:
-	files_tree( char* root_path, bool with_hidden, int tree_id );
-	files_tree( vector<file_system_object>& nodes );
-	~files_tree();
+	file_tree( char* root_path, bool with_hidden, int tree_id );
+	file_tree( vector<file_system_object>& nodes );
+	~file_tree();
 
 	void GetNodes( vector<file_system_object>& nodes );
-	void CreateFilesTree( const char* target_path );
+	void CreateFilesTree();
 };
 
 #endif
