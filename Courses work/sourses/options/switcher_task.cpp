@@ -184,14 +184,16 @@ bool switcher_task::CheckPermissions( archive_options* options )
 			}
 			else
 			{
-				cout << "Was unable to obtain statistics: " << paths[ i ] << endl;
+				cerr << "Was unable to obtain statistics: " << paths[ i ] << endl;
 				result = false;
+				break;
 			}
 		}
 		else
 		{
-			cout << "File or directory not found: " << paths[ i ] << endl;
+			cerr << "File or directory not found: " << paths[ i ] << endl;
 			result = false;
+			break;
 		}
 	}
 

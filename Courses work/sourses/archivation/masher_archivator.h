@@ -29,7 +29,7 @@ private:
 	file_system_object CreateFileObject( header_node& node );
 	int TreesCount( vector<file_system_object>& files );
 	void FreeFileObjects( vector<file_system_object>& files );
-	void Extract( vector<file_system_object>& tree_nodes );
+	void Extract( int archive_descriptor, archive_header header, vector<file_system_object>& files );
 public:
 	void RunArchivation( archive_options* options );
 	void RunExtracting( archive_options* options );

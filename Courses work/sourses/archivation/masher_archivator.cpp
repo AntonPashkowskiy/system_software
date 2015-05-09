@@ -10,7 +10,7 @@
 
 using namespace std;
 
-const int buffer_length = 8388608;
+const int buffer_size = 8388608;
 
 void masher_archivator::RunArchivation( archive_options* options )
 {
@@ -56,13 +56,22 @@ void masher_archivator::RunExtracting( archive_options* options )
 		throw archive_exception( "Error extraction.", e.GetMessage() );
 	}
 
+	int archive_descriptor = open( options -> target_archive_name, O_RDONLY );
+
+	if( archive_descriptor  == -1 )
+	{
+		throw archive_exception( "Error extraction." );	
+	}
+
 	vector<file_system_object> files;
 	vector<file_system_object> tree_nodes;
 	vector<file_tree*> file_trees;
 	file_tree* tree = nullptr;
 	char* name = nullptr;
 
-	// делаем текущей директорию указанную в опциях
+	// делаем текущей директорию указанную в опциях,
+	// если в опциях не указана целевая директория 
+	// создаём директорию с именем архива без расширения
 	if( options -> target_path != nullptr )
 	{
 		if( chdir( options -> target_path ) != 0 )
@@ -77,8 +86,9 @@ void masher_archivator::RunExtracting( archive_options* options )
 		GetArchiveName( name, options -> target_archive_name );
 		int descriptor = mkdir( name, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH | S_IWOTH );
 
-		if( descriptor == -1 || fchdir( descriptor ) != 0 )
+		if( descriptor == -1 || chdir( name ) != 0 )
 		{
+			delete name;
 			throw archive_exception( "Error extraction." );
 		}
 
@@ -115,9 +125,10 @@ void masher_archivator::RunExtracting( archive_options* options )
 		file_trees[ i ] -> GetNodes( tree_nodes );
 	}
 
-	Extract( tree_nodes );
+	Extract( archive_descriptor, header, tree_nodes );
 	DestroyTrees( file_trees );
 	FreeFileObjects( files );
+	close( archive_descriptor );
 }
 
 void masher_archivator::RemoveFiles( archive_options* options )
@@ -378,7 +389,7 @@ void masher_archivator::Archive(
 
 	for( unsigned int i = 0; i < header_nodes.size(); i++ )
 	{
-		total_size += header_nodes[ i ].file_length;
+		total_size += header_nodes[ i ].file_size;
 	}
 
 	total_size += WriteHeader( archive_descriptor, header_nodes, compress );
@@ -468,13 +479,13 @@ void masher_archivator::CheckReadAccess( vector<file_system_object> files )
 void masher_archivator::CreateHeaderNode( 
 	file_system_object& fs_object, 
 	header_node& header_n, 
-	size_f file_length, 
+	size_f file_size, 
 	char compression_type )
 {
 	strcpy( header_n.file_name, fs_object.file_name );
 	header_n.file_type = fs_object.type == DIRECTORY ? 'd' : 'r';
 	header_n.compression_type = compression_type;
-	header_n.file_length = file_length;
+	header_n.file_size = file_size;
 	header_n.file_id = fs_object.object_id;
 	header_n.file_parent_id = fs_object.parent_id;
 	header_n.tree_id = fs_object.tree_id;
@@ -492,9 +503,9 @@ header_node masher_archivator::WriteFileToArchive( int archive_fd, file_system_o
 	}
 
 	int file_descriptor = open( object.full_path, O_RDONLY );
-	size_f file_length = 0;
+	size_f file_size = 0;
 	char compression_type = 'n';
-	char* buffer = new char[ buffer_length ];
+	char* buffer = new char[ buffer_size ];
 	
 	if( compress )
 	{
@@ -507,9 +518,9 @@ header_node masher_archivator::WriteFileToArchive( int archive_fd, file_system_o
 
 		while( true )
 		{
-			bytes_read = read( file_descriptor, buffer, buffer_length );
+			bytes_read = read( file_descriptor, buffer, buffer_size );
 			bytes_written = write( archive_fd, buffer, bytes_read );
-			file_length += bytes_written;
+			file_size += bytes_written;
 
 			if( bytes_written != bytes_read )
 			{
@@ -519,14 +530,14 @@ header_node masher_archivator::WriteFileToArchive( int archive_fd, file_system_o
 				throw archive_exception( "Archive write error." );
 			}
 
-			if( bytes_read < buffer_length )
+			if( bytes_read < buffer_size )
 			{
 				break;
 			}
 		}
 	}
 
-	CreateHeaderNode( object, header_n, file_length, compression_type );
+	CreateHeaderNode( object, header_n, file_size, compression_type );
 	close( file_descriptor );
 	delete buffer;
 	return header_n;
@@ -618,7 +629,7 @@ unsigned masher_archivator::CalculateCheckSum( int descriptor, size_f file_size 
 		throw archive_exception( "Error calculating the check sum." );
 	}
 
-	char *buffer = new char[ buffer_length ];
+	char *buffer = new char[ buffer_size ];
 	int bytes_read = 0;
 	size_f checked_size = 0;
 	bool quit = false;
@@ -626,7 +637,7 @@ unsigned masher_archivator::CalculateCheckSum( int descriptor, size_f file_size 
 
 	while( true )
 	{
-		bytes_read = read( descriptor, buffer, buffer_length );
+		bytes_read = read( descriptor, buffer, buffer_size );
 
 		if( bytes_read == -1 )
 		{
@@ -732,10 +743,97 @@ void masher_archivator::FreeFileObjects( vector<file_system_object>& files )
 	files.clear();
 }
 
-void masher_archivator::Extract( vector<file_system_object>& tree_nodes )
+void masher_archivator::Extract( 
+	int archive_descriptor, 
+	archive_header header, 
+	vector<file_system_object>& files )
 {
-	for( unsigned int i = 0; i < tree_nodes.size(); i++ )
+	char* buffer = new char[ buffer_size ];
+	int file_descriptor = 0;
+	size_f bytes_read = 0;
+	size_f bytes_written = 0;
+	size_f left_to_read = 0;
+	size_f offset = 0;
+	size_f bf_size = buffer_size;
+	bool error = false;
+
+	for( unsigned int i = 0; i < header.nodes.size(); i++ )
 	{
-		cout << tree_nodes[ i ].full_path << endl;
+		if( files[ i ].type == DIRECTORY )
+		{
+			continue;
+		}
+
+		file_descriptor = open( files[ i ].full_path, O_WRONLY );
+		left_to_read = header.nodes[ i ].file_size;
+
+		if( file_descriptor == -1 )
+		{
+			offset += header.nodes[ i ].file_size;
+			cerr << "Failed to extract the " << files[ i ].file_name << " file." << endl;
+			close( file_descriptor );
+			continue;
+		}
+
+		if( lseek( archive_descriptor, offset, SEEK_SET ) == -1 )
+		{
+			offset += header.nodes[ i ].file_size; 
+			cerr << "Failed to extract the " << files[ i ].file_name << " file." << endl;
+			close( file_descriptor );
+			continue;
+		}
+
+		while( left_to_read != 0 )
+		{
+			if( bf_size > left_to_read )
+			{
+				bytes_read = read( archive_descriptor, buffer, left_to_read );
+
+				if( bytes_read != left_to_read )
+				{
+					error = true;
+					break;
+				}
+
+				left_to_read -= bytes_read;
+			}
+			else
+			{
+				bytes_read = read( archive_descriptor, buffer, bf_size );
+
+				if( bytes_read != bf_size )
+				{
+					error = true;
+					break;
+				}
+
+				left_to_read -= bytes_read;
+			}
+
+			if( header.nodes[ i ].compression_type == 'n' )
+			{
+				bytes_written = write( file_descriptor, buffer, bytes_read );
+
+				if( bytes_written != bytes_read )
+				{
+					error = true;
+					break;
+				}  
+			}
+			else
+			{
+				//РАСЖАТИЕ БУФЕРА
+			}
+		}
+
+		if( error )
+		{
+			cerr << "Failed to extract the " << files[ i ].file_name << " file." << endl;
+		}
+
+		offset += header.nodes[ i ].file_size;
+		close( file_descriptor );
 	}
+
+	delete buffer;
 }
