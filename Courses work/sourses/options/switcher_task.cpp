@@ -271,6 +271,6 @@ void switcher_task::ShowHelp()
 
 void print_exception_information( archive_exception& e )
 {
-	cerr << e.GetMessage() << endl;
+	cerr << e.GetMessage() << " ";
 	cerr << e.GetInnerMessage() << endl; 
 }

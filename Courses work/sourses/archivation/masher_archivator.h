@@ -9,9 +9,9 @@ typedef unsigned long long size_f;
 class masher_archivator : public archivator
 {
 private:
-	// методы для архивации
+	// методы для архивации.
 	void Archive( char* target_archive_name, std::vector<file_system_object>& files, char* comment, bool compress );
-	void CheckReadAccess( vector<file_system_object> files );
+	void CheckReadAccess( vector<file_system_object>& files );
 	void CreateHeaderNode( file_system_object& fs_object, header_node& header_n, size_f file_length, char compression_type );
 	void WriteTotalSize( int archive_fd, size_f total_size );
 	void WriteCheckSum( int archive_fd, unsigned check_sum );
@@ -22,14 +22,18 @@ private:
 	unsigned CalculateCheckSum( int descriptor, size_f file_size );
 	void DestroyTrees( vector<file_tree*>& trees );
 	void GetArchiveName( char* name, char* full_name );
-	// методы получения заголовка
+	// методы получения заголовка.
 	archive_header CreateHeader( header_node* header_elements, int count, char* comment );
-	// методы для разархивации
+	// методы для разархивации.
 	void GetFilesFromHeader( archive_header& header, vector<file_system_object>& files );
 	file_system_object CreateFileObject( header_node& node );
 	int TreesCount( vector<file_system_object>& files );
 	void FreeFileObjects( vector<file_system_object>& files );
 	void Extract( int archive_descriptor, archive_header header, vector<file_system_object>& files );
+	// методы для удаления файлов.
+	vector<int> GetFilesIndexes( archive_header& header, archive_options* options );
+	void GetAllIndexes( archive_header& header, vector<int>& indexes, int parent_index );
+	void RewriteArchive( int archive_descriptor, archive_header& header, vector<int>& rf_indexes );
 public:
 	void RunArchivation( archive_options* options );
 	void RunExtracting( archive_options* options );
