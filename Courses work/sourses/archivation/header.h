@@ -7,6 +7,11 @@
 #include <vector>
 #endif
 
+/*
+	Структура представляющая собой заголовок архива.
+	Состоит из комментария и вектора элементов заголовка.
+*/
+
 struct archive_header
 {
 	std::vector<header_node> nodes;

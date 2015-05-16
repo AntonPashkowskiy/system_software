@@ -2,6 +2,12 @@
 #define FILE_SYSTEM_OBJECT
 #include "file_type.h"
 
+/*
+	Структура описывающая обьект файловой системы
+	и содержащая всю информацию для воссоздания дерева 
+	файлов и директорий в файловой системе.
+*/
+
 struct file_system_object
 {
 	char* full_path = nullptr;

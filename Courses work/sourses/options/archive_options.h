@@ -1,4 +1,3 @@
-// подключаем список используемый в параметрах
 #if !defined( STL_VECTOR )
 #define STL_VECTOR
 #include <vector>

@@ -102,12 +102,12 @@ void masher_archivator::RunExtracting( archive_options* options )
 
 		if( descriptor == -1 || chdir( name ) != 0 )
 		{
-			delete name;
+			delete [] name;
 			close( archive_descriptor );
 			throw archive_exception( "Error extraction." );
 		}
 
-		delete name;
+		delete [] name;
 	}
 
 	GetFilesFromHeader( header, files );
@@ -412,6 +412,7 @@ archive_header masher_archivator::GetHeader( archive_options* options )
 				
 				if( bytes_read != header_size )
 				{
+					delete [] header_elements;
 					raise_header_getting_error( archive_descriptor );
 				}
 			}
@@ -422,6 +423,7 @@ archive_header masher_archivator::GetHeader( archive_options* options )
 		}
 		else
 		{
+			delete [] header_elements;
 			raise_header_getting_error( archive_descriptor );
 		}
 
@@ -634,7 +636,7 @@ int masher_archivator::CreateArchiveFile( char* target_archive_name )
 	int archive_descriptor = open( archive_name, O_CREAT | O_RDWR, 
 		S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH | S_IWOTH );
 	
-	delete archive_name;
+	delete [] archive_name;
 	return archive_descriptor;
 }
 
@@ -713,7 +715,7 @@ header_node masher_archivator::WriteFileToArchive( int archive_fd, file_system_o
 
 			if( bytes_written != bytes_read )
 			{
-				delete buffer;
+				delete [] buffer;
 				close( file_descriptor );
 				close( archive_fd );
 				throw archive_exception( "Archive write error." );
@@ -728,7 +730,7 @@ header_node masher_archivator::WriteFileToArchive( int archive_fd, file_system_o
 
 	CreateHeaderNode( object, header_n, file_size, compression_type );
 	close( file_descriptor );
-	delete buffer;
+	delete []  buffer;
 	return header_n;
 }
 
@@ -869,7 +871,7 @@ unsigned masher_archivator::CalculateCheckSum( int descriptor, size_f file_size 
 		}
 	}
 
-	delete buffer;
+	delete [] buffer;
 	return crc.GetCheckSumm();
 }
 
@@ -961,7 +963,7 @@ void masher_archivator::FreeFileObjects( vector<file_system_object>& files )
 {
 	for( unsigned int i = 0; i < files.size(); i++ )
 	{
-		delete files[ i ].file_name;
+		delete [] files[ i ].file_name;
 	}
 
 	files.clear();
@@ -1064,7 +1066,7 @@ void masher_archivator::Extract(
 		close( file_descriptor );
 	}
 
-	delete buffer;
+	delete [] buffer;
 }
 //------------------------------------------------------------------------------------
 
@@ -1229,7 +1231,7 @@ void masher_archivator::RewriteArchive( int archive_descriptor, archive_header& 
 		{
 			if( lseek( archive_descriptor, read_offset, SEEK_SET ) == -1 )
 			{
-				delete buffer;
+				delete [] buffer;
 				throw archive_exception( "Overwrite error." );
 			}
 
@@ -1239,7 +1241,7 @@ void masher_archivator::RewriteArchive( int archive_descriptor, archive_header& 
 
 				if( bytes_read != move_bytes_left )
 				{
-					delete buffer;
+					delete [] buffer;
 					throw archive_exception( "Overwrite error." );
 				}
 			}
@@ -1249,14 +1251,14 @@ void masher_archivator::RewriteArchive( int archive_descriptor, archive_header& 
 
 				if( bytes_read != buffer_size )
 				{
-					delete buffer;
+					delete [] buffer;
 					throw archive_exception( "Overwrite error." );
 				}
 			}
 
 			if( lseek( archive_descriptor, write_offset, SEEK_SET ) == -1 )
 			{
-				delete buffer;
+				delete [] buffer;
 				throw archive_exception( "Overwrite error." );
 			}
 
@@ -1264,7 +1266,7 @@ void masher_archivator::RewriteArchive( int archive_descriptor, archive_header& 
 
 			if( bytes_written != bytes_read )
 			{
-				delete buffer;
+				delete [] buffer;
 				throw archive_exception( "Overwrite error." );
 			}
 
@@ -1274,5 +1276,5 @@ void masher_archivator::RewriteArchive( int archive_descriptor, archive_header& 
 		}
 	}
 
-	delete buffer;
+	delete [] buffer;
 }
