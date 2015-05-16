@@ -397,10 +397,11 @@ archive_header masher_archivator::GetHeader( archive_options* options )
 			raise_header_getting_error( archive_descriptor );
 		}
 
-		int hn_count = header_size / sizeof( header_node );
-		header_node* header_elements = new header_node[ hn_count ];
+		unsigned char* buffer = new unsigned char[ header_size ];
+		header_node* header_elements = nullptr;
+		unsigned int elements_count = 0;
 
-		if( header_size >= 0 && !header_is_commpressed )
+		if( header_size >= 0 )
 		{
 			// устанавливаем смещение в файле на начало заголовка
 			offset -= header_size;
@@ -408,18 +409,48 @@ archive_header masher_archivator::GetHeader( archive_options* options )
 			if( (position = lseek( archive_descriptor, offset, SEEK_SET )) != -1 )
 			{
 				// считываем заголовок
-				bytes_read = read( archive_descriptor, header_elements, header_size );
+				bytes_read = read( archive_descriptor, buffer, header_size );
 				
 				if( bytes_read != header_size )
 				{
-					delete [] header_elements;
+					delete [] buffer;
 					raise_header_getting_error( archive_descriptor );
 				}
+
+				if( header_is_commpressed )
+				{
+					compressor lzw_decompressor;
+					vector<unsigned char> information;
+		
+					lzw_decompressor.Decompress( buffer, header_size, information );
+					elements_count = (information.size() * sizeof( unsigned char )) / sizeof( header_node );
+					header_elements = new header_node[ elements_count ];
+					header_node* pointer = reinterpret_cast<header_node*>( information.data() );
+
+					for( unsigned int i = 0; i < elements_count; i++ )
+					{
+						header_elements[ i ] = pointer[ i ];
+					}
+
+					information.clear();
+				}
+				else
+				{
+					elements_count = header_size / sizeof( header_node );
+					header_elements = new header_node[ elements_count ];
+					header_node* pointer = reinterpret_cast<header_node*>( buffer );
+
+					for( unsigned int i = 0; i < elements_count; i++ )
+					{
+						header_elements[ i ] = pointer[ i ];
+					}
+				}
 			}
-		}
-		else if( header_size >= 0 && header_is_commpressed )
-		{
-			// ЗАГЛУШКА ДЛЯ РАСЖАТИЯ ЗАГОЛОВКА
+			else
+			{
+				delete [] header_elements;
+				raise_header_getting_error( archive_descriptor );
+			}
 		}
 		else
 		{
@@ -428,7 +459,7 @@ archive_header masher_archivator::GetHeader( archive_options* options )
 		}
 
 		close( archive_descriptor );
-		return CreateHeader( header_elements, hn_count, comment ); 
+		return CreateHeader( header_elements, elements_count, comment ); 
 	}
 	else
 	{
@@ -440,11 +471,11 @@ archive_header masher_archivator::GetHeader( archive_options* options )
 /*
 	Создаёт структуру заголовка из комментария и вектора элементов заголовка.
 */
-archive_header masher_archivator::CreateHeader( header_node* header_elements, int count, char* comment )
+archive_header masher_archivator::CreateHeader( header_node* header_elements, unsigned int count, char* comment )
 {
 	archive_header header;
 
-	for( int i = 0; i < count; i ++ )
+	for( unsigned int i = 0; i < count; i ++ )
 	{
 		header.nodes.push_back( header_elements[ i ] );
 	}
@@ -696,20 +727,28 @@ header_node masher_archivator::WriteFileToArchive( int archive_fd, file_system_o
 	int file_descriptor = open( object.full_path, O_RDONLY );
 	size_f file_size = 0;
 	char compression_type = 'n';
-	char* buffer = new char[ buffer_size ];
-	
-	if( compress )
-	{
-		//сжатие потока и запись
-	}
-	else
-	{
-		int bytes_read = 0;
-		int bytes_written = 0;
+	unsigned char* buffer = new unsigned char[ buffer_size ];
+	int bytes_read = 0;
+	int bytes_written = 0;
+	compressor lzw_compressor;
 
-		while( true )
+	while( true )
+	{
+		bytes_read = read( file_descriptor, buffer, buffer_size );
+
+		if( compress && bytes_read == buffer_size )
 		{
-			bytes_read = read( file_descriptor, buffer, buffer_size );
+			lzw_compressor.Compress( buffer, bytes_read, archive_fd, false );
+		}
+		else if( compress && bytes_read != buffer_size )
+		{
+			lzw_compressor.Compress( buffer, bytes_read, archive_fd, true );
+			file_size = lzw_compressor.GetTotalCompressedSize();
+			compression_type = 'w';
+			break;
+		}
+		else
+		{
 			bytes_written = write( archive_fd, buffer, bytes_read );
 			file_size += bytes_written;
 
@@ -740,22 +779,30 @@ header_node masher_archivator::WriteFileToArchive( int archive_fd, file_system_o
 */
 int masher_archivator::WriteHeader( int archive_fd, vector<header_node> header, bool compress )
 {
-	int header_size = 0;
-	unsigned int bytes_written = 0;	
+	unsigned int bytes_written = 0;
+	unsigned int nodes_count = header.size();
+	unsigned int header_size = nodes_count * sizeof( header_node );
+	int written_size = 0;
+	header_node* data = header.data();	
 
 	if( compress )
 	{
-		//сжатие и запись заголовка
+		compressor lzw_compressor;
+		unsigned char* c_data = reinterpret_cast<unsigned char*>( data );
+		lzw_compressor.Compress( 
+			c_data, 
+			static_cast<int>( header_size ), 
+			archive_fd, 
+			true 
+		);
+		written_size = static_cast<int>( lzw_compressor.GetTotalCompressedSize() );
 	}
 	else
 	{
-		unsigned int nodes_count = header.size();
-		header_node* data = header.data();
+		bytes_written = write( archive_fd, data, header_size );
+		written_size = bytes_written;
 
-		bytes_written = write( archive_fd, data, nodes_count * sizeof( header_node ) );
-		header_size += bytes_written;
-		
-		if( bytes_written != nodes_count * sizeof( header_node ) )
+		if( bytes_written != header_size )
 		{
 			close( archive_fd );
 			throw archive_exception( "Error writing archive. Header damaged." );
@@ -763,7 +810,7 @@ int masher_archivator::WriteHeader( int archive_fd, vector<header_node> header, 
 	}
 	
 	// записываем размер заголовка
-	bytes_written = write( archive_fd, &header_size, sizeof( int ) );
+	bytes_written = write( archive_fd, &written_size, sizeof( int ) );
 	bytes_written += write( archive_fd, &compress, sizeof( bool ) );
 
 	if( bytes_written != (sizeof( int ) + sizeof( bool )) )
@@ -772,8 +819,8 @@ int masher_archivator::WriteHeader( int archive_fd, vector<header_node> header, 
 		throw archive_exception( "Error writing archive. header damaged." );
 	}
 
-	header_size += bytes_written;
-	return header_size;
+	written_size += bytes_written;
+	return written_size;
 }
 
 /*
@@ -979,7 +1026,7 @@ void masher_archivator::Extract(
 	archive_header header, 
 	vector<file_system_object>& files )
 {
-	char* buffer = new char[ buffer_size ];
+	unsigned char* buffer = new unsigned char[ buffer_size ];
 	int file_descriptor = 0;
 	size_f bytes_read = 0;
 	size_f bytes_written = 0;
@@ -994,9 +1041,10 @@ void masher_archivator::Extract(
 		{
 			continue;
 		}
-
+		
 		file_descriptor = open( files[ i ].full_path, O_WRONLY );
 		left_to_read = header.nodes[ i ].file_size;
+		compressor* lzw_decompressor = nullptr;
 
 		if( file_descriptor == -1 )
 		{
@@ -1053,7 +1101,18 @@ void masher_archivator::Extract(
 			}
 			else
 			{
-				//РАСЖАТИЕ БУФЕРА
+				if( lzw_decompressor == nullptr )
+				{
+					lzw_decompressor = new compressor();
+				}
+				
+				bool is_good = DecompressBuffer( buffer, bytes_read, lzw_decompressor, file_descriptor );
+
+				if( !is_good )
+				{
+					error = true;
+					break;
+				}
 			}
 		}
 
@@ -1062,11 +1121,38 @@ void masher_archivator::Extract(
 			cerr << "Failed to extract the " << files[ i ].file_name << " file." << endl;
 		}
 
+		if( lzw_decompressor != nullptr )
+		{
+			delete lzw_decompressor;
+			lzw_decompressor = nullptr;
+		}
+
 		offset += header.nodes[ i ].file_size;
 		close( file_descriptor );
 	}
 
 	delete [] buffer;
+}
+
+bool masher_archivator::DecompressBuffer( 
+	unsigned char* buffer, 
+	size_f buffer_size, 
+	compressor* decompressor, 
+	int file_descriptor )
+{
+	vector<unsigned char> information;
+	int bytes_written = 0;
+
+	decompressor -> Decompress( buffer, buffer_size, information );	
+	bytes_written = write( file_descriptor, information.data(), information.size() );
+
+	if( bytes_written != static_cast<int>( information.size() ))
+	{
+		return false;
+	}
+
+	information.clear();
+	return true;
 }
 //------------------------------------------------------------------------------------
 
@@ -1131,7 +1217,7 @@ vector<int> masher_archivator::GetFilesIndexes( archive_header& header, archive_
 
 		if( !is_exist )
 		{
-			cout <<  "File " << (options -> paths)[ i ] << "don't exist in archive." << endl;
+			cout <<  "File " << (options -> paths)[ i ] << " don't exist in archive." << endl;
 			error = true;
 		}
 		else

@@ -3,6 +3,7 @@
 #include "archivator.h"
 #include "../fsystem/fs_tree.h"
 #include "../exceptions/archive_exceptions.h"
+#include "../compression/LZW.h"
 
 typedef unsigned long long size_f;
 
@@ -23,13 +24,14 @@ private:
 	void DestroyTrees( vector<file_tree*>& trees );
 	void GetArchiveName( char* name, char* full_name );
 	// методы получения заголовка.
-	archive_header CreateHeader( header_node* header_elements, int count, char* comment );
+	archive_header CreateHeader( header_node* header_elements, unsigned int count, char* comment );
 	// методы для разархивации.
 	void GetFilesFromHeader( archive_header& header, vector<file_system_object>& files );
 	file_system_object CreateFileObject( header_node& node );
 	int TreesCount( vector<file_system_object>& files );
 	void FreeFileObjects( vector<file_system_object>& files );
 	void Extract( int archive_descriptor, archive_header header, vector<file_system_object>& files );
+	bool DecompressBuffer( unsigned char* buffer, size_f buffer_size, compressor* decompressor, int file_descriptor );
 	// методы для удаления файлов.
 	vector<int> GetFilesIndexes( archive_header& header, archive_options* options );
 	void GetAllIndexes( archive_header& header, vector<int>& indexes, int parent_index );
