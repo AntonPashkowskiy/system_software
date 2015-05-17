@@ -239,7 +239,7 @@ void switcher_task::PrintHeader( archive_header header )
 	for( unsigned int i = 0; i < header.nodes.size(); i++ )
 	{
 		cout << setw( 60 ) << left << header.nodes[ i ].file_name;
-		cout <<( header.nodes[ i ].file_type == 'd' ? " : directory" : " : regular file" ) << endl;
+		cout << right <<( header.nodes[ i ].file_type == 'd' ? " : directory" : " : regular file" ) << endl;
 	}
 
 	cout << "----------------------------------------------------------------------------" << endl;

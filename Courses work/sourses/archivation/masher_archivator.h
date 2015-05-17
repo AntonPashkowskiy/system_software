@@ -17,7 +17,7 @@ private:
 	void WriteTotalSize( int archive_fd, size_f total_size );
 	void WriteCheckSum( int archive_fd, unsigned check_sum );
 	int CreateArchiveFile( char* target_archive_name );
-	int WriteHeader( int archive_fd, vector<header_node> header_nodes, bool compress );
+	int WriteHeader( int archive_fd, vector<header_node>& header_nodes, bool compress );
 	int WriteComment( int archive_fd, char* comment );
 	header_node WriteFileToArchive( int archive_fd, file_system_object object, bool compress );
 	unsigned CalculateCheckSum( int descriptor, size_f file_size );

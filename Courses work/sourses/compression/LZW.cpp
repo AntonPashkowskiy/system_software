@@ -146,8 +146,6 @@ int compressor::Compress( unsigned char* in_buffer, int in_buffer_size, int out_
 */
 int compressor::OutputCode( int out_descriptor, int code )
 {
-   static unsigned char buffer;
-   static int bits_in_buffer;
    int i = 0;
    int two_in_power_bit_count = 1;
    
@@ -247,8 +245,7 @@ int compressor::Decompress(unsigned char* in_buffer, unsigned int in_buffer_size
 {
 	unsigned int index = 0;
     int temp_code = 0;
-    static int state = -1;
-
+    
     if( is_first_time )
     {
     	current_code = GetCode( in_buffer, in_buffer_size, index );
@@ -340,15 +337,10 @@ int compressor::Decompress(unsigned char* in_buffer, unsigned int in_buffer_size
 }
 
 /*
-    Метод выдаёт очередной код символа расжатой инфомации по символу сжатой информации.
+    Метод выдаёт очередной код символа расжатой инфомации по символам сжатой информации.
 */
 int compressor::GetCode( unsigned char* in_buffer, unsigned int in_buffer_size, unsigned int& index )
 {
-   static unsigned char buffer;
-   static int number_of_bits_in_buffer = 0;
-   static int cyrcle_state = -1;
-   static int tip_state = -1;
-   static int code_state = -1;
    int i = 0;
    int two_in_power_i = 1;
    int code = 0;
@@ -366,7 +358,7 @@ int compressor::GetCode( unsigned char* in_buffer, unsigned int in_buffer_size, 
 
       	if( number_of_bits_in_buffer == 0 && index < in_buffer_size )
       	{
-      		buffer = in_buffer[ index ];
+      		buffer2 = in_buffer[ index ];
             index ++;
          	number_of_bits_in_buffer = 8;
       	}
@@ -379,8 +371,8 @@ int compressor::GetCode( unsigned char* in_buffer, unsigned int in_buffer_size, 
             return -1;
         }
 
-      	code += ( buffer % 2 ) * two_in_power_i;
-      	buffer /= 2;
+      	code += ( buffer2 % 2 ) * two_in_power_i;
+      	buffer2 /= 2;
       	number_of_bits_in_buffer --;
       	i ++;
       	two_in_power_i *= 2;

@@ -195,6 +195,7 @@ void masher_archivator::RemoveFiles( archive_options* options )
 	{
 		files_part_length += header.nodes[ i ].file_size;
 	}
+	
 	// открываем архив для чтения и записи.
 	int archive_descriptor = open( options -> target_archive_name, O_RDWR );
 
@@ -233,6 +234,7 @@ void masher_archivator::RemoveFiles( archive_options* options )
 
 	size_f new_archive_size = 0;
 	bool compress = false;
+	
 	// пересчитываем общую длинну файлов в архиве и 
 	// если находим сжатый файл - выставляем признак сжатия в true.
 	for( unsigned int i = 0; i < header_elements.size(); i++ )
@@ -251,7 +253,13 @@ void masher_archivator::RemoveFiles( archive_options* options )
 		close( archive_descriptor );
 		throw archive_exception( "Еrror removing." );
 	}
-	
+
+	if( lseek( archive_descriptor, 0, SEEK_END ) == -1 )
+	{
+		close( archive_descriptor );
+		throw archive_exception( "Error removing." );
+	}
+
 	// записываем всю оставшуюся всю информацию
 	try
 	{
@@ -777,7 +785,7 @@ header_node masher_archivator::WriteFileToArchive( int archive_fd, file_system_o
 	Метод записывающий все элементы заголока и его длинну в архив.
 	Заголовок сжимается если это указано в аргументе метода.
 */
-int masher_archivator::WriteHeader( int archive_fd, vector<header_node> header, bool compress )
+int masher_archivator::WriteHeader( int archive_fd, vector<header_node>& header, bool compress )
 {
 	unsigned int bytes_written = 0;
 	unsigned int nodes_count = header.size();
@@ -1124,7 +1132,9 @@ void masher_archivator::Extract(
 	delete [] buffer;
 }
 
-
+/*
+	Считывает по кускам необходимую длинну информации из архива, расжимает и записывает в файл.
+*/
 bool masher_archivator::DecompressFile( int archive_descriptor, size_f file_size, int file_descriptor )
 {
 	size_f buffer_size = 500;

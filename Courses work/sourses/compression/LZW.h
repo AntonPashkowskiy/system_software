@@ -25,6 +25,18 @@ private:
 	unsigned char* buffer_accumulator = nullptr;
 	int current_buffer_index = 0;
 	size_f total_bytes_written = 0;
+	// переменные для сохранения состояния.
+	unsigned char buffer;
+   	int bits_in_buffer = 0;
+	//
+   	int state = -1;
+   	//
+   	unsigned char buffer2;
+   	int number_of_bits_in_buffer = 0;
+  	int cyrcle_state = -1;
+   	int tip_state = -1;
+   	int code_state = -1;
+   	//
 
 	int InitializeStringTable();
 	int SearchInStringTable( int searching_prefix_code, unsigned char searching_character);
