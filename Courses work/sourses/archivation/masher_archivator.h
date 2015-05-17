@@ -31,7 +31,7 @@ private:
 	int TreesCount( vector<file_system_object>& files );
 	void FreeFileObjects( vector<file_system_object>& files );
 	void Extract( int archive_descriptor, archive_header header, vector<file_system_object>& files );
-	bool DecompressBuffer( unsigned char* buffer, size_f buffer_size, compressor* decompressor, int file_descriptor );
+	bool DecompressFile( int archive_descriptor, size_f file_size, int file_descriptor );
 	// методы для удаления файлов.
 	vector<int> GetFilesIndexes( archive_header& header, archive_options* options );
 	void GetAllIndexes( archive_header& header, vector<int>& indexes, int parent_index );

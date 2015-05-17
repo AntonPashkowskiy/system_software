@@ -421,8 +421,8 @@ archive_header masher_archivator::GetHeader( archive_options* options )
 				{
 					compressor lzw_decompressor;
 					vector<unsigned char> information;
-		
-					lzw_decompressor.Decompress( buffer, header_size, information );
+							
+					lzw_decompressor.Decompress( buffer, static_cast<unsigned int>(header_size), information );
 					elements_count = (information.size() * sizeof( unsigned char )) / sizeof( header_node );
 					header_elements = new header_node[ elements_count ];
 					header_node* pointer = reinterpret_cast<header_node*>( information.data() );
@@ -902,7 +902,6 @@ unsigned masher_archivator::CalculateCheckSum( int descriptor, size_f file_size 
 		{
 			bytes_read = file_size - checked_size;
 			quit = true;
-			break;
 		}
 
 		if( bytes_read > 0 )
@@ -1044,7 +1043,6 @@ void masher_archivator::Extract(
 		
 		file_descriptor = open( files[ i ].full_path, O_WRONLY );
 		left_to_read = header.nodes[ i ].file_size;
-		compressor* lzw_decompressor = nullptr;
 
 		if( file_descriptor == -1 )
 		{
@@ -1059,6 +1057,19 @@ void masher_archivator::Extract(
 			offset += header.nodes[ i ].file_size; 
 			cerr << "Failed to extract the " << files[ i ].file_name << " file." << endl;
 			close( file_descriptor );
+			continue;
+		}
+
+		if( header.nodes[ i ].compression_type != 'n' )
+		{
+			buffer = nullptr;
+			if( !DecompressFile( archive_descriptor, left_to_read, file_descriptor ) )
+			{
+				cerr << "Failed to extract the " << files[ i ].file_name << " file." << endl;
+				close( file_descriptor );
+			}
+
+			offset += header.nodes[ i ].file_size; 
 			continue;
 		}
 
@@ -1099,21 +1110,6 @@ void masher_archivator::Extract(
 					break;
 				}  
 			}
-			else
-			{
-				if( lzw_decompressor == nullptr )
-				{
-					lzw_decompressor = new compressor();
-				}
-				
-				bool is_good = DecompressBuffer( buffer, bytes_read, lzw_decompressor, file_descriptor );
-
-				if( !is_good )
-				{
-					error = true;
-					break;
-				}
-			}
 		}
 
 		if( error )
@@ -1121,37 +1117,60 @@ void masher_archivator::Extract(
 			cerr << "Failed to extract the " << files[ i ].file_name << " file." << endl;
 		}
 
-		if( lzw_decompressor != nullptr )
-		{
-			delete lzw_decompressor;
-			lzw_decompressor = nullptr;
-		}
-
 		offset += header.nodes[ i ].file_size;
 		close( file_descriptor );
 	}
-
+	
 	delete [] buffer;
 }
 
-bool masher_archivator::DecompressBuffer( 
-	unsigned char* buffer, 
-	size_f buffer_size, 
-	compressor* decompressor, 
-	int file_descriptor )
+
+bool masher_archivator::DecompressFile( int archive_descriptor, size_f file_size, int file_descriptor )
 {
-	vector<unsigned char> information;
-	int bytes_written = 0;
+	size_f buffer_size = 500;
+	size_f bytes_read = 0;
+	size_f bytes_written = 0;
+	unsigned char* buffer = new unsigned char[ buffer_size ];
+	compressor lzw_decompressor;
+	vector<unsigned char> b_vector;
 
-	decompressor -> Decompress( buffer, buffer_size, information );	
-	bytes_written = write( file_descriptor, information.data(), information.size() );
-
-	if( bytes_written != static_cast<int>( information.size() ))
+	while( file_size != 0 )
 	{
-		return false;
+		if( file_size > buffer_size )
+		{
+			bytes_read = read( archive_descriptor, buffer, buffer_size );
+
+			if( bytes_read != buffer_size )
+			{
+				return false;
+			}
+
+			file_size -= buffer_size;
+		}
+		else if( file_size <= buffer_size )
+		{
+			bytes_read = read( archive_descriptor, buffer, file_size );
+
+			if( bytes_read != file_size )
+			{
+				return false;
+			}
+
+			file_size = 0;
+		}
+
+		lzw_decompressor.Decompress( buffer, static_cast<unsigned int>( bytes_read ), b_vector );
+		bytes_written = write( file_descriptor, b_vector.data(), b_vector.size() );
+
+		if( bytes_written != b_vector.size() )
+		{
+			return false;
+		}
+
+		b_vector.clear();
 	}
 
-	information.clear();
+	delete [] buffer;
 	return true;
 }
 //------------------------------------------------------------------------------------

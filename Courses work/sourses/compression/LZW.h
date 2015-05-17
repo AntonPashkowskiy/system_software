@@ -29,7 +29,7 @@ private:
 	int InitializeStringTable();
 	int SearchInStringTable( int searching_prefix_code, unsigned char searching_character);
 	int OutputCode( int out_descriptor, int code );
-	int GetCode( unsigned char* in_buffer, int in_buffer_size, int& index );
+	int GetCode( unsigned char* in_buffer, unsigned int in_buffer_size, unsigned int& index );
 	int OutputStringForCode( vector<unsigned char>& out_vector, int current_code );
 	int Out( int out_descriptor, unsigned char code, bool write_last, bool end );
 	unsigned char GetFirstCharacterForCode( int current_code );
@@ -37,7 +37,7 @@ public:
 	compressor();
 	~compressor();
 	int Compress( unsigned char* in_buffer, int in_buffer_size, int out_file_descriptor, bool end );
-	int Decompress( unsigned char* in_buffer, int in_buffer_size, vector<unsigned char>& out_vector );
+	int Decompress(unsigned char* in_buffer, unsigned int in_buffer_size, vector<unsigned char>& out_vector);
 	size_f GetTotalCompressedSize();
 };
 

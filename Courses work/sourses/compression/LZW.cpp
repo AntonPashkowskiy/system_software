@@ -243,12 +243,12 @@ int compressor::Out( int out_descriptor, unsigned char code, bool write_last, bo
     При использовании одного обьекта класса compressor метод сохраняет своё состояние до
     поступления следующего буфера с информацией.
 */
-int compressor::Decompress( unsigned char* in_buffer, int in_buffer_size, vector<unsigned char>& out_vector )
+int compressor::Decompress(unsigned char* in_buffer, unsigned int in_buffer_size, vector<unsigned char>& out_vector)
 {
-	int index = 0;
+	unsigned int index = 0;
     int temp_code = 0;
     static int state = -1;
-    
+
     if( is_first_time )
     {
     	current_code = GetCode( in_buffer, in_buffer_size, index );
@@ -342,7 +342,7 @@ int compressor::Decompress( unsigned char* in_buffer, int in_buffer_size, vector
 /*
     Метод выдаёт очередной код символа расжатой инфомации по символу сжатой информации.
 */
-int compressor::GetCode( unsigned char* in_buffer, int in_buffer_size, int& index )
+int compressor::GetCode( unsigned char* in_buffer, unsigned int in_buffer_size, unsigned int& index )
 {
    static unsigned char buffer;
    static int number_of_bits_in_buffer = 0;
